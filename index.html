@@ -1,0 +1,4518 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#1B4965" />
+  <title>2027 冬季長野・信越與富士山 11 日賞雪溫泉網頁旅遊書</title>
+  <style>
+    /* ==========================================================================
+       1. 核心設計系統變數與護眼高對比配色（零外部依賴，純原生 CSS）
+       ========================================================================== */
+    :root {
+      --base-font: 20px; /* 預設開啟即為「大字 A+ (20px)」 */
+      --bg-page: #FAF7F0;
+      --bg-outer: #EAE4D8;
+      --bg-card: #FFFFFF;
+      --border-card: #E2DCD0;
+      --text-main: #1C2329;
+      --text-sub: #4A5568;
+      --brand-blue: #1B4965;
+      --brand-blue-dark: #123347;
+      --brand-blue-soft: #EBF4F8;
+      --map-green: #1E6B52;
+      --map-green-soft: #E8F5F0;
+      --alert-red: #B83227;
+      --alert-red-soft: #FDF2F1;
+      --amber-gold: #A85E08;
+      --amber-soft: #FEF8EC;
+      --shadow-card: 0 3px 10px rgba(28, 35, 41, 0.06);
+      --radius-lg: 16px;
+      --radius-md: 12px;
+      --radius-sm: 8px;
+      --header-h: 68px; /* 由 JS ResizeObserver 即時同步實際高度 */
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    html {
+      font-size: var(--base-font);
+      font-family: 'PingFang TC', 'Microsoft JhengHei', 'Noto Sans TC', 'Hiragino Sans', 'Yu Gothic', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--text-main);
+      background-color: var(--bg-outer);
+      line-height: 1.6;
+      scroll-behavior: smooth;
+      -webkit-tap-highlight-color: transparent;
+      /* 關鍵修正：改用 clip 而非 hidden，避免破壞 position: sticky */
+      overflow-x: clip;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg-outer);
+      overflow-x: clip;
+      width: 100%;
+    }
+
+    /* 手機滿版、平板與電腦置中閱讀框 */
+    .app-container {
+      width: 100%;
+      max-width: 560px;
+      min-height: 100vh;
+      min-height: 100dvh;
+      margin: 0 auto;
+      background-color: var(--bg-page);
+      box-shadow: 0 0 28px rgba(27, 73, 101, 0.14);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      /* 關鍵修正：改用 clip，確保內部 sticky-header 與 day-selector-bar 正常吸頂 */
+      overflow-x: clip;
+    }
+
+    /* 通用工具類 */
+    .hidden { display: none !important; }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+
+    button, a {
+      font-family: inherit;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    button:focus-visible, a:focus-visible, input:focus-visible {
+      outline: 3px solid var(--amber-gold);
+      outline-offset: 2px;
+    }
+
+    /* ==========================================================================
+       2. 頂部固定工具列（Sticky Header + 三段字體大小調整）
+       ========================================================================== */
+    .sticky-header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background-color: var(--brand-blue);
+      color: #FFFFFF;
+      border-bottom: 3px solid #F6C453;
+      padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 10px 12px;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.16);
+    }
+
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .header-brand {
+      min-width: 0;
+      flex: 1 1 170px;
+    }
+
+    .header-title {
+      font-size: 16px;
+      font-weight: 800;
+      line-height: 1.25;
+      letter-spacing: 0.02em;
+      margin: 0;
+      color: #FFFFFF;
+    }
+
+    .header-sub {
+      font-size: 12px;
+      color: #D7E9F2;
+      margin: 2px 0 0 0;
+      line-height: 1.2;
+    }
+
+    .font-controls {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex-shrink: 0;
+    }
+
+    .font-btn {
+      min-height: 40px;
+      padding: 6px 10px;
+      border-radius: 10px;
+      border: 2px solid rgba(255, 255, 255, 0.45);
+      background-color: rgba(255, 255, 255, 0.12);
+      color: #FFFFFF;
+      font-weight: 800;
+      font-size: 13px;
+      line-height: 1.1;
+      transition: transform 0.12s ease, background-color 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .font-btn:active {
+      transform: scale(0.95);
+    }
+
+    .font-btn.active {
+      background-color: #F6C453;
+      color: #1C2329;
+      border-color: #FFFFFF;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+    }
+
+    /* ==========================================================================
+       3. 主內容區域與卡片元件
+       ========================================================================== */
+    .main-content {
+      flex: 1;
+      padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .section-wrap {
+      padding: 14px 14px 20px 14px;
+    }
+
+    .hero-strip {
+      background: linear-gradient(135deg, #1B4965 0%, #123347 100%);
+      color: #FFFFFF;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border-card);
+    }
+
+    .hero-strip-tag {
+      display: inline-block;
+      background-color: rgba(246, 196, 83, 0.22);
+      border: 1px solid #F6C453;
+      color: #FDE68A;
+      font-size: 0.76rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 999px;
+      margin-bottom: 6px;
+    }
+
+    .hero-strip-title {
+      margin: 0;
+      font-size: 1.15rem;
+      font-weight: 800;
+      line-height: 1.35;
+    }
+
+    .hero-strip-desc {
+      margin: 6px 0 0 0;
+      font-size: 0.82rem;
+      color: #D7E9F2;
+      line-height: 1.5;
+    }
+
+    .today-banner {
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      background-color: rgba(255, 255, 255, 0.14);
+      border: 1.5px solid rgba(246, 196, 83, 0.75);
+      border-radius: 12px;
+      padding: 8px 10px;
+      font-size: 0.8rem;
+    }
+
+    .card {
+      background-color: var(--bg-card);
+      border: 2px solid var(--border-card);
+      border-radius: var(--radius-lg);
+      padding: 15px;
+      box-shadow: var(--shadow-card);
+      margin-bottom: 16px;
+    }
+
+    .section-heading {
+      margin: 0 0 12px 0;
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: var(--brand-blue);
+      border-left: 5px solid var(--brand-blue);
+      padding-left: 10px;
+      line-height: 1.35;
+    }
+
+    /* 標籤徽章 */
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      line-height: 1.25;
+    }
+
+    .badge-blue { background-color: var(--brand-blue-soft); color: var(--brand-blue); border: 1px solid #BCD7E6; }
+    .badge-amber { background-color: var(--amber-soft); color: var(--amber-gold); border: 1px solid #EBD0A0; }
+    .badge-red { background-color: var(--alert-red-soft); color: var(--alert-red); border: 1px solid #ECC0BC; }
+    .badge-green { background-color: var(--map-green-soft); color: var(--map-green); border: 1px solid #B6DFCF; }
+    .badge-solid-blue { background-color: var(--brand-blue); color: #FFFFFF; }
+    .badge-solid-amber { background-color: var(--amber-gold); color: #FFFFFF; }
+    .badge-solid-red { background-color: var(--alert-red); color: #FFFFFF; }
+
+    /* 動作按鈕組 */
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-height: 44px;
+      padding: 8px 14px;
+      border-radius: var(--radius-md);
+      font-size: 0.85rem;
+      font-weight: 800;
+      line-height: 1.25;
+      border: 2px solid transparent;
+      transition: transform 0.12s ease, opacity 0.15s ease;
+      text-align: center;
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .btn-full { width: 100%; }
+    .btn-flex { flex: 1 1 135px; }
+
+    .btn-map {
+      background-color: var(--map-green);
+      color: #FFFFFF;
+    }
+
+    .btn-driver {
+      background-color: var(--brand-blue);
+      color: #FFFFFF;
+    }
+
+    .btn-transit {
+      background-color: var(--brand-blue);
+      color: #FFFFFF;
+      border: 2px solid var(--brand-blue-dark);
+      box-shadow: 0 3px 8px rgba(27, 73, 101, 0.22);
+    }
+
+    .btn-amber {
+      background-color: var(--amber-gold);
+      color: #FFFFFF;
+    }
+
+    .btn-red {
+      background-color: var(--alert-red);
+      color: #FFFFFF;
+    }
+
+    .btn-soft {
+      background-color: #FFFFFF;
+      color: var(--brand-blue);
+      border-color: #CFC6B8;
+    }
+
+    /* 橫向捲動容器＋可滑動漸層提示 */
+    .scroller-wrap {
+      position: relative;
+    }
+
+    .scroller-wrap::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 2px;
+      width: 28px;
+      pointer-events: none;
+      background: linear-gradient(to right, rgba(250, 247, 240, 0), rgba(250, 247, 240, 0.96));
+    }
+
+    .pill-scroller {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 2px 24px 4px 2px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .pill-btn {
+      flex-shrink: 0;
+      min-height: 44px;
+      padding: 7px 14px;
+      border-radius: 999px;
+      border: 2px solid #CFC6B8;
+      background-color: #FFFFFF;
+      color: var(--text-main);
+      font-size: 0.85rem;
+      font-weight: 800;
+      white-space: nowrap;
+      transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .pill-btn.active {
+      background-color: var(--brand-blue);
+      color: #FFFFFF;
+      border-color: var(--brand-blue);
+      box-shadow: 0 2px 6px rgba(27, 73, 101, 0.25);
+    }
+
+    /* 搜尋列（地圖總覽用） */
+    .search-box {
+      position: relative;
+      margin-bottom: 12px;
+    }
+
+    .search-input {
+      width: 100%;
+      min-height: 48px;
+      padding: 10px 44px 10px 14px;
+      border-radius: var(--radius-md);
+      border: 2px solid #CFC6B8;
+      background-color: #FFFFFF;
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 0.92rem;
+      font-weight: 600;
+    }
+
+    .search-input:focus {
+      border-color: var(--brand-blue);
+    }
+
+    .search-clear-btn {
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: none;
+      background-color: #ECE6DA;
+      color: var(--text-main);
+      font-weight: 900;
+      font-size: 0.85rem;
+    }
+
+    /* ==========================================================================
+       4. 分頁 1：每日行程專屬樣式
+       ========================================================================== */
+    .day-selector-bar {
+      position: sticky;
+      top: var(--header-h); /* 動態貼齊頂部 header，避免換行遮擋 */
+      z-index: 40;
+      background-color: rgba(250, 247, 240, 0.97);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      border-bottom: 2px solid var(--border-card);
+      padding: 8px 12px 6px 12px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    .day-bar-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-sub);
+      margin-bottom: 5px;
+      padding: 0 2px;
+    }
+
+    .day-pager {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .day-pager .btn {
+      flex: 1;
+      min-height: 48px;
+      font-size: 0.88rem;
+    }
+
+    .day-pager .btn:disabled {
+      opacity: 0.42;
+      cursor: not-allowed;
+    }
+
+    .day-header-box {
+      border-bottom: 2px solid var(--border-card);
+      padding-bottom: 12px;
+      margin-bottom: 14px;
+    }
+
+    .day-date-line {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .day-num-chip {
+      background-color: var(--brand-blue);
+      color: #FFFFFF;
+      font-weight: 900;
+      font-size: 0.9rem;
+      padding: 4px 12px;
+      border-radius: 10px;
+    }
+
+    .day-date-text {
+      font-weight: 800;
+      color: var(--amber-gold);
+      font-size: 0.96rem;
+    }
+
+    .day-title {
+      margin: 4px 0 0 0;
+      font-size: 1.18rem;
+      font-weight: 900;
+      color: var(--text-main);
+      line-height: 1.38;
+    }
+
+    /* 行程時間軸節點 */
+    .timeline-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .timeline-item {
+      background-color: #FCFBF8;
+      border: 1.5px solid #E5DFD3;
+      border-left: 5px solid var(--brand-blue);
+      border-radius: var(--radius-md);
+      padding: 12px 13px;
+    }
+
+    .timeline-item.is-important {
+      background-color: var(--amber-soft);
+      border-color: #EBD0A0;
+      border-left-color: var(--amber-gold);
+    }
+
+    .timeline-item.is-warning {
+      background-color: var(--alert-red-soft);
+      border-color: #ECC0BC;
+      border-left-color: var(--alert-red);
+    }
+
+    .timeline-time {
+      display: inline-block;
+      font-size: 0.84rem;
+      font-weight: 900;
+      color: var(--brand-blue);
+      background-color: var(--brand-blue-soft);
+      padding: 2px 9px;
+      border-radius: 6px;
+      margin-bottom: 6px;
+    }
+
+    .timeline-item.is-important .timeline-time {
+      color: var(--amber-gold);
+      background-color: #FDE9C4;
+    }
+
+    .timeline-item.is-warning .timeline-time {
+      color: var(--alert-red);
+      background-color: #FADBD8;
+    }
+
+    .timeline-title {
+      margin: 0 0 4px 0;
+      font-size: 1rem;
+      font-weight: 800;
+      color: var(--text-main);
+      line-height: 1.4;
+    }
+
+    .timeline-desc {
+      margin: 0;
+      font-size: 0.92rem;
+      color: #2D3748;
+      line-height: 1.62;
+    }
+
+    .spot-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .spot-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      min-height: 42px;
+      padding: 6px 12px;
+      border-radius: 10px;
+      font-size: 0.8rem;
+      font-weight: 800;
+      border: 1.5px solid transparent;
+      flex: 1 1 130px;
+      text-align: center;
+    }
+
+    .spot-btn-map {
+      background-color: var(--map-green-soft);
+      color: var(--map-green);
+      border-color: var(--map-green);
+    }
+
+    .spot-btn-driver {
+      background-color: var(--brand-blue-soft);
+      color: var(--brand-blue);
+      border-color: var(--brand-blue);
+    }
+
+    .spot-btn-phrase {
+      background-color: var(--amber-soft);
+      color: var(--amber-gold);
+      border-color: var(--amber-gold);
+      flex-basis: 100%;
+    }
+
+    /* 每日叮嚀與備案框 */
+    .tip-box {
+      margin-top: 14px;
+      padding: 13px;
+      border-radius: var(--radius-md);
+      background-color: var(--amber-soft);
+      border: 2px solid #E5C185;
+    }
+
+    .tip-box-title {
+      font-size: 0.94rem;
+      font-weight: 900;
+      color: var(--amber-gold);
+      margin: 0 0 4px 0;
+    }
+
+    .tip-box p {
+      margin: 0;
+      font-size: 0.9rem;
+      color: var(--text-main);
+      line-height: 1.6;
+    }
+
+    .alert-box {
+      margin-top: 12px;
+      padding: 13px;
+      border-radius: var(--radius-md);
+      background-color: var(--alert-red-soft);
+      border: 2px solid var(--alert-red);
+    }
+
+    .alert-box-title {
+      font-size: 0.94rem;
+      font-weight: 900;
+      color: var(--alert-red);
+      margin: 0 0 5px 0;
+    }
+
+    .alert-box p, .alert-box li {
+      font-size: 0.9rem;
+      color: #4A1512;
+      line-height: 1.58;
+    }
+
+    /* ==========================================================================
+       5. 分頁 2：複雜交通 6 大關卡手風琴樣式
+       ========================================================================== */
+    .stage-card {
+      background-color: var(--bg-card);
+      border: 2px solid var(--border-card);
+      border-radius: var(--radius-lg);
+      margin-bottom: 14px;
+      overflow: hidden;
+      box-shadow: var(--shadow-card);
+      scroll-margin-top: calc(var(--header-h) + 12px);
+    }
+
+    .stage-card.is-open {
+      border-color: var(--brand-blue);
+    }
+
+    .stage-header-btn {
+      width: 100%;
+      text-align: left;
+      background-color: #FFFFFF;
+      border: none;
+      padding: 15px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--text-main);
+    }
+
+    .stage-card.is-open .stage-header-btn {
+      background-color: var(--brand-blue-soft);
+      border-bottom: 1.5px solid #BCD7E6;
+    }
+
+    .stage-title {
+      font-size: 1.04rem;
+      font-weight: 900;
+      color: var(--brand-blue);
+      margin: 4px 0 4px 0;
+      line-height: 1.38;
+    }
+
+    .stage-summary {
+      font-size: 0.84rem;
+      color: var(--text-sub);
+      margin: 0;
+    }
+
+    .stage-chevron {
+      flex-shrink: 0;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background-color: var(--brand-blue);
+      color: #FFFFFF;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      font-weight: 900;
+      transition: transform 0.2s ease;
+      margin-top: 2px;
+    }
+
+    .stage-card.is-open .stage-chevron {
+      transform: rotate(180deg);
+    }
+
+    .stage-body {
+      padding: 15px;
+      display: none;
+    }
+
+    .stage-card.is-open .stage-body {
+      display: block;
+    }
+
+    .step-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .step-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      background-color: #FAF7F0;
+      border: 1px solid var(--border-card);
+      border-radius: var(--radius-md);
+      padding: 11px 12px;
+    }
+
+    .step-badge {
+      flex-shrink: 0;
+      background-color: var(--brand-blue);
+      color: #FFFFFF;
+      font-size: 0.76rem;
+      font-weight: 900;
+      padding: 4px 8px;
+      border-radius: 8px;
+      min-width: 56px;
+      text-align: center;
+      margin-top: 2px;
+    }
+
+    .step-text {
+      font-size: 0.92rem;
+      color: var(--text-main);
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    /* ==========================================================================
+       6. 分頁 3 & 4：地圖總覽、星宇航班機票卡、住宿與黑貓行李流程圖
+       ========================================================================== */
+    .place-card-jp {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--brand-blue);
+      margin: 3px 0 6px 0;
+    }
+
+    .place-card-note {
+      font-size: 0.88rem;
+      color: var(--text-sub);
+      margin: 0;
+      line-height: 1.55;
+    }
+
+    /* 星宇航空電子機票卡（高對比登機證風格，兼顧 24px 超大字不爆版） */
+    .flight-pass-card {
+      background: linear-gradient(160deg, #132A3E 0%, #1B3B55 100%);
+      color: #FFFFFF;
+      border: 2.5px solid #D4A853;
+      border-radius: var(--radius-lg);
+      padding: 15px;
+      margin-bottom: 18px;
+      box-shadow: 0 5px 16px rgba(19, 42, 62, 0.22);
+    }
+
+    .flight-pnr-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      background-color: rgba(255, 255, 255, 0.09);
+      border: 1.5px solid rgba(212, 168, 83, 0.65);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+      margin: 10px 0 12px 0;
+    }
+
+    .flight-pnr-code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 1.35rem;
+      font-weight: 900;
+      letter-spacing: 0.14em;
+      color: #F6C453;
+      line-height: 1.1;
+    }
+
+    .flight-leg {
+      background-color: #FFFFFF;
+      color: var(--text-main);
+      border-radius: var(--radius-md);
+      padding: 13px;
+      margin-top: 10px;
+      border: 1.5px solid #E2DCD0;
+    }
+
+    .flight-leg-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding-bottom: 8px;
+      margin-bottom: 10px;
+      border-bottom: 1.5px dashed #D5CEC0;
+    }
+
+    .flight-route-grid {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .flight-point {
+      min-width: 0;
+    }
+
+    .flight-point.is-end {
+      text-align: right;
+    }
+
+    .flight-time-big {
+      font-size: 1.25rem;
+      font-weight: 900;
+      color: #7A4419;
+      line-height: 1.15;
+    }
+
+    .flight-iata {
+      font-size: 0.95rem;
+      font-weight: 900;
+      color: var(--brand-blue);
+      margin-top: 2px;
+    }
+
+    .flight-terminal {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text-sub);
+      line-height: 1.35;
+    }
+
+    .flight-mid {
+      text-align: center;
+      padding: 0 4px;
+    }
+
+    .flight-arrow-line {
+      font-size: 0.9rem;
+      font-weight: 900;
+      color: var(--amber-gold);
+      white-space: nowrap;
+    }
+
+    .flight-duration {
+      font-size: 0.74rem;
+      font-weight: 700;
+      color: var(--text-sub);
+      white-space: nowrap;
+    }
+
+    .flight-leg-foot {
+      margin-top: 9px;
+      padding-top: 8px;
+      border-top: 1px solid #ECE6DA;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: var(--map-green);
+      font-weight: 800;
+    }
+
+    /* 每日行程內嵌航班精簡卡 */
+    .day-flight-banner {
+      background: linear-gradient(135deg, #132A3E 0%, #1B4965 100%);
+      color: #FFFFFF;
+      border: 2px solid #D4A853;
+      border-radius: var(--radius-md);
+      padding: 12px 13px;
+      margin-bottom: 14px;
+    }
+
+    .day-flight-banner .flight-leg {
+      margin-top: 8px;
+    }
+
+    /* YouTube 實景教學影片卡片（懶載入內嵌＋一鍵開 YouTube App） */
+    .video-section-box {
+      background-color: #FDF7F7;
+      border: 2px solid #E5B8B4;
+      border-radius: var(--radius-md);
+      padding: 12px 13px;
+      margin-bottom: 14px;
+    }
+
+    .video-section-title {
+      margin: 0 0 8px 0;
+      font-size: 0.96rem;
+      font-weight: 900;
+      color: #9B1C1C;
+    }
+
+    .video-card {
+      background-color: #FFFFFF;
+      border: 1.5px solid #E2DCD0;
+      border-radius: var(--radius-md);
+      padding: 11px 12px;
+      margin-top: 10px;
+    }
+
+    .timeline-item .video-card {
+      margin-top: 10px;
+      border-color: #E5B8B4;
+      background-color: #FFFDFB;
+    }
+
+    .video-card-head {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+
+    .video-card-title {
+      margin: 0 0 8px 0;
+      font-size: 0.92rem;
+      font-weight: 800;
+      color: var(--text-main);
+      line-height: 1.45;
+    }
+
+    .video-frame-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: linear-gradient(135deg, #1C2329 0%, #2D3748 100%);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    .video-thumb-btn {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      padding: 0;
+      border: none;
+      background: transparent;
+      display: block;
+      color: #FFFFFF;
+    }
+
+    .video-thumb-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      opacity: 0.9;
+    }
+
+    .video-play-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      background: rgba(15, 23, 42, 0.34);
+    }
+
+    .video-play-icon {
+      width: 62px;
+      height: 44px;
+      border-radius: 12px;
+      background-color: #DC2626;
+      color: #FFFFFF;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    .video-play-hint {
+      font-size: 13px;
+      font-weight: 800;
+      background-color: rgba(15, 23, 42, 0.78);
+      padding: 3px 10px;
+      border-radius: 999px;
+      color: #FFFFFF;
+    }
+
+    .video-iframe {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
+    }
+
+    .video-file-note {
+      margin: 6px 0 0 0;
+      font-size: 0.76rem;
+      color: var(--text-sub);
+      line-height: 1.4;
+    }
+
+    .spot-btn-yt {
+      background-color: #DC2626;
+      color: #FFFFFF;
+      border-color: #B91C1C;
+    }
+
+    @media (max-width: 390px) {
+      .flight-route-grid {
+        grid-template-columns: 1fr;
+        text-align: left;
+      }
+      .flight-point.is-end {
+        text-align: left;
+      }
+      .flight-mid {
+        text-align: left;
+        padding: 2px 0;
+      }
+    }
+
+    /* 黑貓行李流程圖 */
+    .luggage-flow-card {
+      background-color: var(--amber-soft);
+      border: 2.5px solid var(--amber-gold);
+      border-radius: var(--radius-lg);
+      padding: 15px;
+      margin-bottom: 18px;
+    }
+
+    .flow-step {
+      background-color: #FFFFFF;
+      border: 1.5px solid #E5C185;
+      border-radius: var(--radius-md);
+      padding: 13px;
+      margin-top: 12px;
+    }
+
+    .flow-route {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-size: 0.96rem;
+      font-weight: 900;
+      margin: 8px 0;
+    }
+
+    .flow-from { color: var(--brand-blue); }
+    .flow-arrow { color: var(--amber-gold); font-weight: 900; }
+    .flow-to { color: var(--map-green); }
+
+    .flow-connector {
+      text-align: center;
+      font-size: 0.84rem;
+      font-weight: 800;
+      color: var(--amber-gold);
+      margin: 8px 0 0 0;
+    }
+
+    .hotel-meta {
+      font-size: 0.88rem;
+      color: var(--text-sub);
+      background-color: #FAF7F0;
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin: 10px 0;
+      line-height: 1.55;
+    }
+
+    /* ==========================================================================
+       7. 分頁 5：子分頁切換、字卡、互動打包清單與緊急安全
+       ========================================================================== */
+    .subtab-bar {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      background-color: #ECE6DA;
+      padding: 6px;
+      border-radius: 14px;
+      margin-bottom: 16px;
+    }
+
+    .subtab-btn {
+      min-height: 46px;
+      border: none;
+      border-radius: 10px;
+      background-color: transparent;
+      color: var(--text-main);
+      font-size: 0.88rem;
+      font-weight: 800;
+      padding: 6px 4px;
+      transition: all 0.15s ease;
+    }
+
+    .subtab-btn.active {
+      background-color: var(--brand-blue);
+      color: #FFFFFF;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.14);
+    }
+
+    .phrase-jp-preview {
+      background-color: #FAF7F0;
+      border: 1.5px solid #D5CEC0;
+      border-radius: 10px;
+      padding: 11px 12px;
+      margin: 8px 0 10px 0;
+    }
+
+    .phrase-jp-big {
+      font-size: 1.08rem;
+      font-weight: 900;
+      color: #111827;
+      line-height: 1.45;
+      margin: 0;
+    }
+
+    .phrase-kana {
+      font-size: 0.82rem;
+      color: var(--text-sub);
+      margin: 5px 0 0 0;
+    }
+
+    /* 打包清單進度條與勾選列 */
+    .progress-track {
+      width: 100%;
+      height: 14px;
+      background-color: #E2DCD0;
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background-color: var(--map-green);
+      width: 0%;
+      transition: width 0.25s ease;
+    }
+
+    .check-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 11px 12px;
+      border-radius: var(--radius-md);
+      border: 1.5px solid var(--border-card);
+      background-color: #FCFBF8;
+      margin-bottom: 9px;
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .check-row.checked {
+      background-color: var(--map-green-soft);
+      border-color: #A4D4C2;
+    }
+
+    .check-row.checked .check-text {
+      text-decoration: line-through;
+      color: #546E65;
+    }
+
+    .check-input {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 28px;
+      height: 28px;
+      min-width: 28px;
+      border: 2.5px solid var(--brand-blue);
+      border-radius: 7px;
+      background-color: #FFFFFF;
+      margin: 1px 0 0 0;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .check-input:checked {
+      background-color: var(--map-green);
+      border-color: var(--map-green);
+    }
+
+    .check-input:checked::after {
+      content: "";
+      position: absolute;
+      left: 8px;
+      top: 3px;
+      width: 7px;
+      height: 14px;
+      border: solid #FFFFFF;
+      border-width: 0 3px 3px 0;
+      transform: rotate(45deg);
+    }
+
+    .check-text {
+      font-size: 0.92rem;
+      line-height: 1.55;
+      color: var(--text-main);
+    }
+
+    .reset-confirm-bar {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background-color: var(--alert-red-soft);
+      border: 1.5px solid var(--alert-red);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* 緊急電話大按鈕 */
+    .sos-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .sos-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background-color: #FFFFFF;
+      border: 2.5px solid var(--alert-red);
+      border-radius: var(--radius-md);
+      padding: 13px 14px;
+      color: var(--text-main);
+      min-height: 60px;
+    }
+
+    .sos-num {
+      font-size: 1.12rem;
+      font-weight: 900;
+      color: var(--alert-red);
+      white-space: nowrap;
+    }
+
+    /* ==========================================================================
+       8. 底部固定五大分頁導覽列＆浮動回頂按鈕
+       ========================================================================== */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 560px;
+      z-index: 50;
+      background-color: #FFFFFF;
+      border-top: 2px solid #D5CEC0;
+      box-shadow: 0 -4px 14px rgba(28, 35, 41, 0.1);
+      padding: 5px 4px calc(5px + env(safe-area-inset-bottom, 0px)) 4px;
+    }
+
+    .bottom-nav-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 3px;
+    }
+
+    .nav-item {
+      min-height: 58px;
+      border: none;
+      border-radius: 12px;
+      background-color: transparent;
+      color: #4A5568;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      padding: 4px 2px;
+      transition: background-color 0.15s ease, color 0.15s ease;
+    }
+
+    .nav-item-icon {
+      font-size: 21px;
+      line-height: 1;
+    }
+
+    .nav-item-label {
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.15;
+      white-space: nowrap;
+    }
+
+    .nav-item.active {
+      background-color: var(--brand-blue);
+      color: #FFFFFF;
+      box-shadow: 0 2px 6px rgba(27, 73, 101, 0.28);
+    }
+
+    .back-to-top {
+      position: fixed;
+      right: max(14px, calc(50% - 266px));
+      bottom: calc(82px + env(safe-area-inset-bottom, 0px));
+      z-index: 45;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 2px solid #FFFFFF;
+      background-color: var(--brand-blue);
+      color: #FFFFFF;
+      font-size: 20px;
+      font-weight: 900;
+      box-shadow: 0 4px 12px rgba(27, 73, 101, 0.35);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(10px);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .back-to-top.visible {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+
+    /* 輕量通知 Toast */
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+      transform: translateX(-50%) translateY(12px);
+      z-index: 150;
+      background-color: #1C2329;
+      color: #FFFFFF;
+      font-size: 14px;
+      font-weight: 800;
+      padding: 10px 18px;
+      border-radius: 999px;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      white-space: nowrap;
+      max-width: 90vw;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ==========================================================================
+       9. 全螢幕高對比溝通字卡彈窗（Modal，修正長句捲動裁切＋加入導航地址與朗讀）
+       ========================================================================== */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: calc(14px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px)) 16px;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    .modal-overlay.theme-dark {
+      background-color: #0F172A;
+      color: #FFFFFF;
+    }
+
+    .modal-overlay.theme-light {
+      background-color: #FFFFFF;
+      color: #0F172A;
+    }
+
+    .modal-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding-bottom: 12px;
+      border-bottom: 1.5px solid rgba(148, 163, 184, 0.35);
+      flex-shrink: 0;
+    }
+
+    .modal-badge {
+      background-color: #F6C453;
+      color: #111827;
+      font-size: 14px;
+      font-weight: 900;
+      padding: 5px 12px;
+      border-radius: 999px;
+    }
+
+    .modal-top-actions {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .modal-theme-btn {
+      min-height: 42px;
+      padding: 6px 11px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 800;
+      border: 2px solid currentColor;
+      background-color: transparent;
+      color: inherit;
+      white-space: nowrap;
+    }
+
+    /* 修正：以內層 margin: auto 0 取代 justify-content: center，長句溢出絕不裁切頂部 */
+    .modal-center {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 16px 4px;
+    }
+
+    .modal-center-inner {
+      margin: auto 0;
+      width: 100%;
+      max-width: 520px;
+      align-self: center;
+      text-align: center;
+    }
+
+    .modal-jp-main {
+      font-size: clamp(28px, 8vw, 48px);
+      font-weight: 900;
+      line-height: 1.35;
+      letter-spacing: 0.02em;
+      word-break: break-word;
+      margin: 0;
+    }
+
+    .modal-jp-main.is-long {
+      font-size: clamp(22px, 6.2vw, 34px);
+      line-height: 1.42;
+    }
+
+    .modal-address-box {
+      margin: 16px auto 0 auto;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1.5px solid rgba(246, 196, 83, 0.7);
+      background-color: rgba(246, 196, 83, 0.14);
+      font-size: clamp(16px, 4.5vw, 22px);
+      font-weight: 800;
+      line-height: 1.45;
+      word-break: break-word;
+      white-space: pre-line;
+    }
+
+    .modal-sub-reading {
+      margin: 14px 0 0 0;
+      font-size: 17px;
+      opacity: 0.85;
+      line-height: 1.5;
+    }
+
+    .modal-zh-box {
+      margin-top: 18px;
+      padding-top: 14px;
+      border-top: 1.5px solid rgba(148, 163, 184, 0.35);
+      width: 100%;
+    }
+
+    .modal-zh-label {
+      font-size: 13px;
+      opacity: 0.78;
+      margin: 0 0 4px 0;
+    }
+
+    .modal-zh-text {
+      font-size: 18px;
+      font-weight: 700;
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    .modal-footer {
+      width: 100%;
+      max-width: 520px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex-shrink: 0;
+      padding-top: 8px;
+    }
+
+    .modal-utility-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .modal-utility-btn {
+      flex: 1;
+      min-height: 46px;
+      border-radius: 12px;
+      border: 2px solid rgba(148, 163, 184, 0.5);
+      background-color: rgba(148, 163, 184, 0.14);
+      color: inherit;
+      font-size: 15px;
+      font-weight: 800;
+    }
+
+    .modal-close-btn {
+      width: 100%;
+      min-height: 58px;
+      border-radius: 16px;
+      border: none;
+      background-color: var(--amber-gold);
+      color: #FFFFFF;
+      font-size: 20px;
+      font-weight: 900;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    }
+
+    /* 小螢幕細部優化 */
+    @media (max-width: 390px) {
+      .header-title { font-size: 15px; }
+      .font-btn { padding: 5px 8px; font-size: 12px; }
+      .nav-item-label { font-size: 11px; }
+    }
+
+    /* 列印備份模式（方便行前印出紙本） */
+    @media print {
+      body, html, .app-container {
+        background: #FFFFFF !important;
+        box-shadow: none !important;
+        max-width: 100% !important;
+      }
+      .sticky-header, .day-selector-bar, .day-pager, .bottom-nav,
+      .back-to-top, .modal-overlay, .toast, .spot-actions, .btn-group,
+      .video-frame-wrap {
+        display: none !important;
+      }
+      .main-content { padding-bottom: 0 !important; }
+      .card, .stage-card, .timeline-item {
+        break-inside: avoid;
+        box-shadow: none !important;
+      }
+      .stage-body { display: block !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <!-- ==================== 頂部固定工具列 ==================== -->
+    <header id="sticky-header" class="sticky-header">
+      <div class="header-inner">
+        <div class="header-brand">
+          <h1 class="header-title">2027 長野・富士山 11日旅遊書</h1>
+          <p class="header-sub">2/15 週一 ～ 2/25 週四・長輩慢遊版</p>
+        </div>
+        <div class="font-controls" role="group" aria-label="文字大小調整">
+          <button type="button" class="font-btn" data-font="16" aria-pressed="false">標準 A</button>
+          <button type="button" class="font-btn" data-font="20" aria-pressed="true">大字 A+</button>
+          <button type="button" class="font-btn" data-font="24" aria-pressed="false">超大 A++</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ==================== 主內容顯示區 ==================== -->
+    <main class="main-content">
+      <!-- 分頁 1：📅 每日行程 -->
+      <section id="tab-itinerary" class="tab-panel" aria-label="每日行程">
+        <div class="hero-strip">
+          <span class="hero-strip-tag">星宇台中直飛成田・Skyliner 往返・定點連住</span>
+          <h2 class="hero-strip-title">四位長輩冬季賞雪溫泉慢遊手冊</h2>
+          <p class="hero-strip-desc">左右滑動上方日期膠囊或按「前一天／下一天」翻頁，每個景點皆附 Google 地圖與給司機看大字卡。</p>
+          <div id="today-jump-banner" class="today-banner hidden"></div>
+        </div>
+
+        <!-- 橫向可滑動 D1 ~ D11 大膠囊 -->
+        <div class="day-selector-bar">
+          <div class="day-bar-meta">
+            <span id="day-progress-label">目前閱讀：第 1 / 11 天</span>
+            <span>← 左右滑動選日期 →</span>
+          </div>
+          <div class="scroller-wrap">
+            <div id="day-pills" class="pill-scroller no-scrollbar" role="tablist" aria-label="選擇行程天數"></div>
+          </div>
+        </div>
+
+        <!-- 單日詳細內容容器 -->
+        <div class="section-wrap">
+          <div class="day-pager">
+            <button type="button" id="btn-prev-day" class="btn btn-soft" data-step="-1">← 前一天</button>
+            <button type="button" id="btn-next-day" class="btn btn-soft" data-step="1">下一天 →</button>
+          </div>
+
+          <div id="itinerary-content" aria-live="polite"></div>
+
+          <div class="day-pager" style="margin-top: 16px; margin-bottom: 0;">
+            <button type="button" id="btn-prev-day-bottom" class="btn btn-soft" data-step="-1">← 前一天</button>
+            <button type="button" id="btn-next-day-bottom" class="btn btn-soft" data-step="1">下一天 →</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 分頁 2：🚆 交通攻略 -->
+      <section id="tab-transit" class="tab-panel hidden" aria-label="交通攻略">
+        <div class="hero-strip">
+          <span class="hero-strip-tag">6 大複雜轉乘關卡・逐步防迷路攻略</span>
+          <h2 class="hero-strip-title">精準電梯、月台與購票避雷指引</h2>
+          <p class="hero-strip-desc">點擊下方關卡快速跳轉，照著 Step 1、2、3 走就能輕鬆無障礙轉乘。</p>
+        </div>
+        <div class="section-wrap">
+          <div class="scroller-wrap" style="margin-bottom: 14px;">
+            <div id="transit-quick-pills" class="pill-scroller no-scrollbar"></div>
+          </div>
+          <div id="transit-stages-container"></div>
+        </div>
+      </section>
+
+      <!-- 分頁 3：🗺️ 地圖總覽 -->
+      <section id="tab-maps" class="tab-panel hidden" aria-label="地圖總覽">
+        <div class="hero-strip">
+          <span id="maps-count-tag" class="hero-strip-tag">全程精準地點・一鍵喚起 Google Maps</span>
+          <h2 class="hero-strip-title">全程重要地點地圖與司機名片庫</h2>
+          <p class="hero-strip-desc">手機點擊「開啟 Google 地圖」直接導航，點「給司機看」立刻滿版放大日文地名與地址。</p>
+        </div>
+        <div class="section-wrap">
+          <div class="search-box">
+            <label for="map-search-input" class="sr-only">搜尋地點名稱</label>
+            <input type="search" id="map-search-input" class="search-input" placeholder="🔍 搜尋地點（例如：善光寺、上野、秀峰閣）" autocomplete="off" />
+            <button type="button" id="map-search-clear" class="search-clear-btn hidden" aria-label="清除搜尋">✕</button>
+          </div>
+          <div class="scroller-wrap" style="margin-bottom: 14px;">
+            <div id="map-filter-pills" class="pill-scroller no-scrollbar"></div>
+          </div>
+          <div id="map-places-container"></div>
+        </div>
+      </section>
+
+      <!-- 分頁 4：🏨 機票住宿 -->
+      <section id="tab-hotels" class="tab-panel hidden" aria-label="機票、住宿與行李">
+        <div class="hero-strip">
+          <span class="hero-strip-tag">星宇 JX314/JX315・車站共構連住・2 次黑貓寄送</span>
+          <h2 class="hero-strip-title">機票資訊、住宿總覽與黑貓行李表</h2>
+          <p class="hero-strip-desc">報到前可一鍵放大班機與航廈資訊給地勤看，善用兩次黑貓寄送讓長輩全程輕裝移動。</p>
+        </div>
+        <div class="section-wrap">
+          <!-- 星宇航空電子機票卡 -->
+          <div id="flight-pass-container"></div>
+
+          <!-- 視覺化兩次黑貓行李寄送流程圖 -->
+          <div class="luggage-flow-card">
+            <h3 style="margin: 0 0 6px 0; font-size: 1.1rem; font-weight: 900; color: var(--amber-gold);">
+              🐈‍⬛ 兩次大件行李「黑貓宅急便」時間表
+            </h3>
+            <p style="margin: 0; font-size: 0.9rem; color: var(--text-main);">
+              將 4 件大行李箱直接交給飯店櫃台寄送至下一間連住飯店，中途僅背 1 日輕便小包！
+            </p>
+
+            <div class="flow-step">
+              <div class="badge-row" style="margin-bottom: 4px;">
+                <span class="badge badge-solid-amber">第 1 次寄送</span>
+                <span class="badge badge-amber">Day 3（2/17 週三）傍晚 18:00 前</span>
+              </div>
+              <div class="flow-route">
+                <span class="flow-from">長野大都會飯店</span>
+                <span class="flow-arrow">➔</span>
+                <span class="flow-to">松本里士滿飯店</span>
+              </div>
+              <p style="margin: 0; font-size: 0.88rem; color: var(--text-sub); line-height: 1.55;">
+                <strong>輕裝好處：</strong>Day 4 搭長野電鐵去澀溫泉住無電梯的「金具屋」，只需背 1 日換洗衣物＋常備藥，完全不用雪地扛大箱！
+              </p>
+            </div>
+
+            <div class="flow-connector">▼ Day 5（2/19）抵達松本里士滿飯店櫃台直接領回 ▼</div>
+
+            <div class="flow-step">
+              <div class="badge-row" style="margin-bottom: 4px;">
+                <span class="badge badge-solid-amber">第 2 次寄送</span>
+                <span class="badge badge-amber">Day 8（2/22 週一）上午 09:00 前</span>
+              </div>
+              <div class="flow-route">
+                <span class="flow-from">河口湖 秀峰閣湖月</span>
+                <span class="flow-arrow">➔</span>
+                <span class="flow-to">淺草東武飯店</span>
+              </div>
+              <p style="margin: 0; font-size: 0.88rem; color: var(--text-sub); line-height: 1.55;">
+                <strong>輕裝好處：</strong>溫泉旅館常於 10:00 截止收件（請前一晚確認）。Day 9 搭富士迴遊抵新宿後，4 人輕裝搭 1 台計程車直奔淺草領行李！
+              </p>
+            </div>
+
+            <div class="btn-group" style="margin-top: 12px;">
+              <button type="button" class="btn btn-amber btn-full" data-phrase="hotel-kuroneko">
+                🗣️ 放大「寄送 4 件黑貓行李」日文給櫃台看
+              </button>
+            </div>
+          </div>
+
+          <h3 class="section-heading">全程 5 間長輩友善精選飯店</h3>
+          <div id="hotels-container"></div>
+        </div>
+      </section>
+
+      <!-- 分頁 5：🗣️ 字卡打包 -->
+      <section id="tab-tools" class="tab-panel hidden" aria-label="字卡打包與安全">
+        <div class="hero-strip">
+          <span class="hero-strip-tag">滿版手指字卡・自動記憶打包・冬季安全手冊</span>
+          <h2 class="hero-strip-title">溝通字卡、互動打包清單與安全守則</h2>
+          <p class="hero-strip-desc">點選下方三個功能按鈕切換，所有勾選紀錄會自動儲存在手機內。</p>
+        </div>
+
+        <div class="section-wrap">
+          <div class="subtab-bar" role="tablist" aria-label="工具子分頁">
+            <button type="button" class="subtab-btn active" role="tab" aria-selected="true" data-subtab="phrases">🗣️ 溝通字卡</button>
+            <button type="button" class="subtab-btn" role="tab" aria-selected="false" data-subtab="packing">🧳 互動打包</button>
+            <button type="button" class="subtab-btn" role="tab" aria-selected="false" data-subtab="safety">🛡️ 安全急難</button>
+          </div>
+
+          <!-- 子分頁 A：六大場景溝通字卡 -->
+          <div id="subtab-phrases" role="tabpanel">
+            <div class="scroller-wrap" style="margin-bottom: 14px;">
+              <div id="phrase-filter-pills" class="pill-scroller no-scrollbar"></div>
+            </div>
+            <div id="phrases-container"></div>
+          </div>
+
+          <!-- 子分頁 B：互動打包清單 -->
+          <div id="subtab-packing" class="hidden" role="tabpanel">
+            <div class="card" style="border-color: var(--brand-blue);">
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+                <h3 style="margin: 0; font-size: 1.05rem; font-weight: 900; color: var(--brand-blue);">📦 行李打包完成進度</h3>
+                <span id="pack-badge" class="badge badge-solid-blue">0 / 0 (0%)</span>
+              </div>
+              <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="pack-progress-bar">
+                <div id="pack-progress-fill" class="progress-fill"></div>
+              </div>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+                <span id="pack-status-msg" style="font-size: 0.85rem; color: var(--text-sub);">勾選項目將自動儲存在手機中</span>
+                <button type="button" id="btn-show-reset" class="btn btn-soft" style="min-height: 38px; padding: 5px 12px; font-size: 0.8rem; color: var(--alert-red); border-color: #ECC0BC;">
+                  重置勾選
+                </button>
+              </div>
+              <div id="reset-confirm-bar" class="reset-confirm-bar hidden">
+                <span style="font-size: 0.85rem; font-weight: 800; color: var(--alert-red);">確定要清除所有已勾選紀錄？</span>
+                <div style="display: flex; gap: 8px;">
+                  <button type="button" id="btn-confirm-reset" class="btn btn-red" style="min-height: 38px; padding: 5px 12px; font-size: 0.82rem;">確定重置</button>
+                  <button type="button" id="btn-cancel-reset" class="btn btn-soft" style="min-height: 38px; padding: 5px 12px; font-size: 0.82rem;">取消</button>
+                </div>
+              </div>
+            </div>
+            <div id="packing-groups-container"></div>
+          </div>
+
+          <!-- 子分頁 C：冬季賞雪泡湯安全守則與緊急電話 -->
+          <div id="subtab-safety" class="hidden" role="tabpanel">
+            <div class="card" style="border-color: var(--alert-red); background-color: var(--alert-red-soft);">
+              <h3 style="margin: 0 0 6px 0; font-size: 1.12rem; font-weight: 900; color: var(--alert-red);">🆘 日本旅遊緊急聯絡電話（點擊直撥）</h3>
+              <p style="margin: 0; font-size: 0.86rem; color: #4A1512;">如遇身體不適或急難狀況，可請飯店櫃台或身邊路人協助撥打並說明所在地址。</p>
+              <div class="sos-grid">
+                <a class="sos-btn" href="tel:119">
+                  <div>
+                    <div style="font-weight: 900; font-size: 0.96rem;">🚑 日本救護車 / 火警</div>
+                    <div style="font-size: 0.8rem; color: var(--text-sub);">急性頭暈、摔傷或緊急送醫</div>
+                  </div>
+                  <span class="sos-num">119</span>
+                </a>
+                <a class="sos-btn" href="tel:110">
+                  <div>
+                    <div style="font-weight: 900; font-size: 0.96rem;">🚓 日本警察局報案</div>
+                    <div style="font-size: 0.8rem; color: var(--text-sub);">遺失護照、迷路或突發治安事件</div>
+                  </div>
+                  <span class="sos-num">110</span>
+                </a>
+                <a class="sos-btn" href="tel:05038162787">
+                  <div>
+                    <div style="font-weight: 900; font-size: 0.96rem;">📞 JNTO 24小時中文急難熱線</div>
+                    <div style="font-size: 0.8rem; color: var(--text-sub);">日本官方提供 24H 全年無休中文醫療諮詢</div>
+                  </div>
+                  <span class="sos-num">050-3816-2787</span>
+                </a>
+                <a class="sos-btn" href="tel:08010097179">
+                  <div>
+                    <div style="font-weight: 900; font-size: 0.96rem;">🇹🇼 台北駐日代表處急難專線</div>
+                    <div style="font-size: 0.8rem; color: var(--text-sub);">台灣旅客旅日緊急救助（日本境內直撥）</div>
+                  </div>
+                  <span class="sos-num">080-1009-7179</span>
+                </a>
+              </div>
+              <div class="btn-group">
+                <button type="button" class="btn btn-red btn-full" data-phrase="med-dizzy">
+                  🗣️ 立即放大「長輩頭暈不適求助」日文保命卡
+                </button>
+              </div>
+            </div>
+
+            <div class="card">
+              <h3 class="section-heading">🐧 雪地防滑「企鵝步法」四大口訣</h3>
+              <ul class="step-list">
+                <li class="step-item">
+                  <span class="step-badge">口訣 1</span>
+                  <p class="step-text"><strong>小步慢行、微向前傾：</strong>步距縮小成平常的一半，膝蓋微彎、身體重心稍微往前傾，像企鵝一樣穩穩移動。</p>
+                </li>
+                <li class="step-item">
+                  <span class="step-badge">口訣 2</span>
+                  <p class="step-text"><strong>全腳掌垂直平踏：</strong>切勿像平地走路一樣「腳跟先著地」，應整個腳掌垂直踩下，降低向後滑倒風險。</p>
+                </li>
+                <li class="step-item">
+                  <span class="step-badge">口訣 3</span>
+                  <p class="step-text"><strong>雙手絕對不可插口袋：</strong>務必戴上保暖手套，雙手自然張開維持平衡；踩在蓬鬆白雪上比反光透明的「黑冰」安全得多。</p>
+                </li>
+                <li class="step-item">
+                  <span class="step-badge">口訣 4</span>
+                  <p class="step-text"><strong>結冰處務必套上簡易冰爪：</strong>善光寺早晨表參道、戶隱杉木林或雪猴步道遇壓實結冰，立即套上冰爪；進室內餐廳與飯店前請記得脫下免刮傷地板。</p>
+                </li>
+              </ul>
+            </div>
+
+            <div class="card">
+              <h3 class="section-heading" style="color: var(--alert-red); border-left-color: var(--alert-red);">♨️ 冬季泡湯防熱休克五大保命守則</h3>
+              <ul class="step-list">
+                <li class="step-item">
+                  <span class="step-badge" style="background-color: var(--alert-red);">守則 1</span>
+                  <p class="step-text"><strong>入池前由腳往心臟淋溫水：</strong>脫衣進浴場切忌直接泡進熱池！先舀溫水依序淋「雙腳 ➔ 雙腿 ➔ 雙手 ➔ 胸口背部」，讓血壓平穩適應水溫。</p>
+                </li>
+                <li class="step-item">
+                  <span class="step-badge" style="background-color: var(--alert-red);">守則 2</span>
+                  <p class="step-text"><strong>單次浸泡不超過 10–15 分鐘：</strong>日本天然溫泉泉質濃厚且溫度高，每次泡 10–15 分鐘即須坐池邊散熱休息，並於泡湯前後各喝一杯溫開水。</p>
+                </li>
+                <li class="step-item">
+                  <span class="step-badge" style="background-color: var(--alert-red);">守則 3</span>
+                  <p class="step-text"><strong>起身動作放慢防頭暈：</strong>起身時請扶穩池邊扶手，先坐著停留 10 秒再站起來，避免姿勢性低血壓頭昏。</p>
+                </li>
+                <li class="step-item">
+                  <span class="step-badge" style="background-color: var(--alert-red);">守則 4</span>
+                  <p class="step-text"><strong>飯後與飲酒後 1 小時內不泡湯：</strong>晚餐享用會席料理或清酒後，請至少休息 1 小時以上再泡湯；有心血管與高血壓慢性病者優先選溫度溫和之室內池。</p>
+                </li>
+                <li class="step-item">
+                  <span class="step-badge" style="background-color: var(--alert-red);">守則 5</span>
+                  <p class="step-text"><strong>絕不穿木屐雪地巡外湯：</strong>Day 4 澀溫泉石板路結冰極滑且外湯高達 43–45°C、溫差劇烈，長輩留在金具屋館內溫暖浴場與貸切風呂泡湯最安心。</p>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ==================== 浮動回頂按鈕 ==================== -->
+    <button type="button" id="back-to-top" class="back-to-top" aria-label="回到頂部">↑</button>
+
+    <!-- ==================== 底部固定五大分頁導覽列 ==================== -->
+    <nav class="bottom-nav" aria-label="主要功能導覽">
+      <div class="bottom-nav-grid">
+        <button type="button" class="nav-item active" data-tab="itinerary" aria-current="page">
+          <span class="nav-item-icon" aria-hidden="true">📅</span>
+          <span class="nav-item-label">每日行程</span>
+        </button>
+        <button type="button" class="nav-item" data-tab="transit">
+          <span class="nav-item-icon" aria-hidden="true">🚆</span>
+          <span class="nav-item-label">交通攻略</span>
+        </button>
+        <button type="button" class="nav-item" data-tab="maps">
+          <span class="nav-item-icon" aria-hidden="true">🗺️</span>
+          <span class="nav-item-label">地圖總覽</span>
+        </button>
+        <button type="button" class="nav-item" data-tab="hotels">
+          <span class="nav-item-icon" aria-hidden="true">🏨</span>
+          <span class="nav-item-label">機票住宿</span>
+        </button>
+        <button type="button" class="nav-item" data-tab="tools">
+          <span class="nav-item-icon" aria-hidden="true">🗣️</span>
+          <span class="nav-item-label">字卡打包</span>
+        </button>
+      </div>
+    </nav>
+  </div>
+
+  <!-- ==================== 全螢幕高對比溝通字卡彈窗（Modal） ==================== -->
+  <div id="phrase-modal" class="modal-overlay theme-dark hidden" role="dialog" aria-modal="true" aria-labelledby="modal-jp">
+    <div class="modal-top">
+      <span id="modal-badge" class="modal-badge">給司機／站務看</span>
+      <div class="modal-top-actions">
+        <button type="button" id="modal-theme-btn" class="modal-theme-btn">☀️ 白底黑字</button>
+      </div>
+    </div>
+
+    <div class="modal-center">
+      <div class="modal-center-inner">
+        <p id="modal-jp" class="modal-jp-main" lang="ja"></p>
+        <div id="modal-address" class="modal-address-box hidden" lang="ja"></div>
+        <p id="modal-reading" class="modal-sub-reading"></p>
+        <div class="modal-zh-box">
+          <p class="modal-zh-label">中文意思（給長輩確認）</p>
+          <p id="modal-zh" class="modal-zh-text"></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <div class="modal-utility-row">
+        <button type="button" id="modal-speak-btn" class="modal-utility-btn">🔊 朗讀日文</button>
+        <button type="button" id="modal-copy-btn" class="modal-utility-btn">📋 複製日文</button>
+      </div>
+      <button type="button" id="modal-close-btn" class="modal-close-btn">✕ 關閉視窗</button>
+    </div>
+  </div>
+
+  <!-- 輕量提示氣泡 -->
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- ==================== 完整資料與原生 JS 互動邏輯 ==================== -->
+  <script>
+    'use strict';
+
+    /* ==========================================================================
+       零、星宇航空正式機票訂位資料（由電子行程確認單匯入）
+       ========================================================================== */
+    const FLIGHT_BOOKING = {
+      airlineZh: "星宇航空",
+      airlineEn: "STARLUX AIRLINES",
+      pnr: "",
+      cabin: "經濟艙",
+      status: "機位確認",
+      legs: {
+        outbound: {
+          id: "outbound",
+          label: "去程班機（Day 1）",
+          flightNo: "JX314",
+          date: "2027/02/15（週一）",
+          duration: "3 小時 10 分鐘",
+          depTime: "09:15",
+          depCode: "RMQ",
+          depCity: "臺中",
+          depAirport: "臺中國際機場 第 2 航廈",
+          arrTime: "13:25",
+          arrCode: "NRT",
+          arrCity: "東京成田",
+          arrAirport: "成田國際機場 第 2 航廈",
+          checkinTip: "建議 06:45 抵達臺中機場「第 2 航廈」從容託運；2/13 09:15 起開放 48H 網路預辦登機。"
+        },
+        inbound: {
+          id: "inbound",
+          label: "回程班機（Day 11）",
+          flightNo: "JX315",
+          date: "2027/02/25（週四）",
+          duration: "4 小時 30 分鐘",
+          depTime: "14:25",
+          depCode: "NRT",
+          depCity: "東京成田",
+          depAirport: "成田國際機場 第 2 航廈",
+          arrTime: "17:55",
+          arrCode: "RMQ",
+          arrCity: "臺中",
+          arrAirport: "臺中國際機場 第 2 航廈",
+          checkinTip: "10:15 抵成田「第 2 航廈」3F 出境大廳（約 11:25–11:55 開櫃）；2/23 14:25 起開放 48H 網路預辦登機。"
+        }
+      }
+    };
+
+    /* ==========================================================================
+       零之一、實景交通教學影片資料庫（YouTube）
+       ========================================================================== */
+    const VIDEOS_DB = {
+      "yt-skyliner": {
+        id: "yPYYALR8mXg",
+        url: "https://www.youtube.com/watch?v=yPYYALR8mXg",
+        tag: "🎬 成田機場 Skyliner 教學",
+        channel: "2A夫妻",
+        title: "成田機場到東京交通：Skyliner 購票劃位教學 ＆ JR 取票地點",
+        note: "行前必看！從成田入境後如何走去買 Skyliner 與領 JR 車票一次看懂。"
+      },
+      "yt-ueno-walk": {
+        id: "KPKMGJ20nsc",
+        url: "https://www.youtube.com/watch?v=KPKMGJ20nsc",
+        tag: "🎬 京成上野 ➔ JR 上野實景",
+        channel: "小氣少年",
+        title: "從京成上野走到 JR 上野的 2 條路線（地上路線 ＆ 地下避雨路線）",
+        note: "實景帶路！帶長輩推行李從京成上野平緩走到 JR 上野不忍口，下雨下雪也有備案路線。"
+      },
+      "yt-otsuki-transfer": {
+        id: "mUhaPwnJXQc",
+        url: "https://www.youtube.com/watch?v=mUhaPwnJXQc",
+        tag: "🎬 大月站轉富士急行線實景",
+        channel: "sphee12",
+        title: "【實景轉乘】大月駅 JR 中央本線 ➔ 富士急行線 連絡口動線",
+        note: "只有 13 分鐘轉乘超關鍵！行前先看熟下車後地面藍色指標與富士急行線連絡閘門位置，免出大站秒過閘。"
+      }
+    };
+
+    /* ==========================================================================
+       一、地圖資料庫（42 個本次重要地點，所有行程與飯店皆引用此精準座標查詢）
+       ========================================================================== */
+    const PLACES_DB = {
+      // --- 住宿飯店 (5) ---
+      "hotel-nagano": {
+        id: "hotel-nagano", cat: "hotel", days: "Day 1–3",
+        zh: "長野大都會飯店", jp: "ホテルメトロポリタン長野",
+        kana: "ほてるめとろぽりたん ながの",
+        query: "ホテルメトロポリタン長野",
+        addressZh: "長野縣長野市南石堂町 1346（JR長野車站大樓直結）",
+        addressJp: "〒380-0824 長野県長野市南石堂町1346",
+        note: "JR 長野站 2 樓改札口出來免淋雪直結進入，旁即 MIDORI 百貨；Day 3 傍晚在此寄出大行李往松本。",
+        nights: "2/15(一) – 2/18(四) 連住 3 晚"
+      },
+      "hotel-kanaguya": {
+        id: "hotel-kanaguya", cat: "hotel", days: "Day 4",
+        zh: "澀溫泉 歷史之宿 金具屋", jp: "渋温泉 歴史の宿 金具屋",
+        kana: "しぶおんせん れきしのやど かなぐや",
+        query: "渋温泉 歴史の宿 金具屋",
+        addressZh: "長野縣下高井郡山之內町平穩 2202（湯田中站免費接駁）",
+        addressJp: "〒381-0401 長野県下高井郡山ノ内町平穏2202",
+        note: "百年文化財木造古蹟，全館無電梯！已備註請求安排低樓層客房；切勿穿木屐外出巡外湯，留在館內溫暖泡湯最安全。",
+        nights: "2/18(四) – 2/19(五) 住宿 1 晚（輕裝）"
+      },
+      "hotel-matsumoto": {
+        id: "hotel-matsumoto", cat: "hotel", days: "Day 5–6",
+        zh: "松本里士滿飯店", jp: "リッチモンドホテル松本",
+        kana: "りっちもんどほてる まつもと",
+        query: "リッチモンドホテル松本",
+        addressZh: "長野縣松本市中央 1-10-7（JR松本站お城口步行 6 分鐘）",
+        addressJp: "〒390-0811 長野県松本市中央1-10-7",
+        note: "路面平緩且鄰近中町通美食商圈；Day 5 抵達直接於櫃台領回從長野寄來的大件行李。",
+        nights: "2/19(五) – 2/21(日) 連住 2 晚"
+      },
+      "hotel-kogetsu": {
+        id: "hotel-kogetsu", cat: "hotel", days: "Day 7–8",
+        zh: "河口湖 秀峰閣湖月", jp: "河口湖 秀峰閣湖月",
+        kana: "かわぐちこ しゅうほうかく こげつ",
+        query: "河口湖 秀峰閣湖月",
+        addressZh: "山梨縣南都留郡富士河口湖町河口 2312（河口湖站10號月台接駁）",
+        addressJp: "〒401-0304 山梨県南都留郡富士河口湖町河口2312",
+        note: "河口湖北岸第一排，所有客房正對富士山與湖面，房內即可賞逆富士與赤富士；Day 8 上午 09:00 前在此寄出大行李往淺草。",
+        nights: "2/21(日) – 2/23(二) 連住 2 晚"
+      },
+      "hotel-asakusa": {
+        id: "hotel-asakusa", cat: "hotel", days: "Day 9–10",
+        zh: "淺草東武飯店", jp: "浅草東武ホテル",
+        kana: "あさくさとうぶほてる",
+        query: "浅草東武ホテル",
+        addressZh: "東京都台東區淺草 1-1-15（緊鄰東武淺草站與雷門）",
+        addressJp: "〒111-0032 東京都台東区浅草1-1-15",
+        note: "步行 2 分鐘即達雷門，電梯與無障礙動線極佳；Day 9 抵此領回河口湖寄來的行李，Day 11 分搭 2 台計程車赴京成上野。",
+        nights: "2/23(二) – 2/25(四) 連住 2 晚"
+      },
+
+      // --- 交通樞紐 (13) ---
+      "hub-rmq-t2": {
+        id: "hub-rmq-t2", cat: "hub", days: "Day 1・11",
+        zh: "臺中國際機場 第 2 航廈（星宇報到）", jp: "台中空港 第2ターミナル（スターラックス航空）",
+        kana: "たいちゅうくうこう だいにたーみなる",
+        query: "臺中國際機場 第二航廈",
+        note: "星宇航空 JX314 去程出發與 JX315 回程返抵航廈！去程建議 06:45 抵達辦理託運。"
+      },
+      "hub-narita-t2": {
+        id: "hub-narita-t2", cat: "hub", days: "Day 1・11",
+        zh: "成田國際機場 第二航廈", jp: "成田国際空港 第2ターミナル",
+        kana: "なりたこくさいくうこう だいにたーみなる",
+        query: "成田国際空港 第2ターミナル",
+        note: "星宇航空 JX314/JX315 起降航廈。入境在 1 樓，搭電梯下 B1 搭京成 Skyliner；回程搭電梯直上 3 樓出境大廳報到。"
+      },
+      "hub-keisei-ueno": {
+        id: "hub-keisei-ueno", cat: "hub", days: "Day 1・11",
+        zh: "京成上野站（正面口）", jp: "京成上野駅 正面口",
+        kana: "けいせいうえのえき しょうめんぐち",
+        query: "京成上野駅",
+        note: "Skyliner 終點與起點站。出正面口右轉平緩走 1 分鐘過馬路即達 JR 上野站不忍口；Day 11 從淺草分搭 2 台計程車直達此處。"
+      },
+      "hub-jr-ueno": {
+        id: "hub-jr-ueno", cat: "hub", days: "Day 1",
+        zh: "JR 上野站（不忍口 / 新幹線）", jp: "JR上野駅 不忍口",
+        kana: "じぇいあーる うえのえき しのばずぐち",
+        query: "JR上野駅 不忍口",
+        note: "進不忍口走新幹線轉乘口，務必搭大型電梯直下地下 4 樓（19–20 號月台）搭北陸新幹線往長野。"
+      },
+      "hub-jr-nagano": {
+        id: "hub-jr-nagano", cat: "hub", days: "Day 1・5",
+        zh: "JR 長野車站", jp: "JR長野駅",
+        kana: "じぇいあーる ながのえき",
+        query: "JR長野駅",
+        note: "2 樓改札口直通長野大都會飯店與 MIDORI 百貨；Day 5 在 6 號月台搭 JR 特急信濃 10 號前往松本。"
+      },
+      "hub-nagaden-nagano": {
+        id: "hub-nagaden-nagano", cat: "hub", days: "Day 4・5",
+        zh: "長野電鐵 長野站（地下 1 樓）", jp: "長野電鉄 長野駅",
+        kana: "ながのでんてつ ながのえき",
+        query: "長野電鉄 長野駅",
+        note: "位於善光寺口右側地下 1 樓（有電梯）。重要提醒：不能刷 Suica/ICOCA，務必在窗口買紙本特急券與乘車券！"
+      },
+      "hub-nagano-bus7": {
+        id: "hub-nagano-bus7", cat: "hub", days: "Day 3",
+        zh: "長野站善光寺口 7 號巴士月台（Alpico 案內所）", jp: "長野駅善光寺口 7番バスのりば（アルピコ案内所）",
+        kana: "ながのえき ぜんこうじぐち 7ばんばすのりば",
+        query: "アルピコ交通 長野駅前総合案内所",
+        note: "善光寺口 1 樓過馬路即達。Day 3 早上 08:30 在此搭乘 70 系統川中島巴士上山前往戶隱中社。"
+      },
+      "hub-yudanaka": {
+        id: "hub-yudanaka", cat: "hub", days: "Day 4・5",
+        zh: "湯田中車站", jp: "湯田中駅",
+        kana: "ゆだなかえき",
+        query: "湯田中駅",
+        note: "長野電鐵終點站，出站即可銜接金具屋免費接駁車或計程車前往澀溫泉。"
+      },
+      "hub-jr-matsumoto": {
+        id: "hub-jr-matsumoto", cat: "hub", days: "Day 5–7",
+        zh: "JR 松本車站（お城口）", jp: "JR松本駅 お城口",
+        kana: "じぇいあーる まつもとえき おしろぐち",
+        query: "JR松本駅",
+        note: "往里士滿飯店走お城口搭電梯下 1 樓；Day 6 與 Day 7 皆於 2 號月台搭 JR 特急梓 16 號出發。"
+      },
+      "hub-kamisuwa": {
+        id: "hub-kamisuwa", cat: "hub", days: "Day 6",
+        zh: "JR 上諏訪車站（月台溫泉足湯）", jp: "JR上諏訪駅（足湯）",
+        kana: "じぇいあーる かみすわえき あしゆ",
+        query: "上諏訪駅",
+        note: "1 號月台內就有天然溫泉足湯！下車先脫襪暖腳，記得隨身帶小毛巾擦腳。"
+      },
+      "hub-otsuki": {
+        id: "hub-otsuki", cat: "hub", days: "Day 7",
+        zh: "JR 大月車站（富士急行線轉乘口）", jp: "JR大月駅（富士急行線乗換口）",
+        kana: "じぇいあーる おおつきえき",
+        query: "大月駅",
+        note: "Day 7 關鍵轉乘站：走富士急行線連絡口，交 JR 紙票同時刷 Suica/ICOCA 即可進站免出大站。"
+      },
+      "hub-kawaguchiko": {
+        id: "hub-kawaguchiko", cat: "hub", days: "Day 7・9",
+        zh: "河口湖車站（10 號飯店接駁處）", jp: "河口湖駅",
+        kana: "かわぐちこえき",
+        query: "河口湖駅",
+        note: "站前 10 號乘車處搭秀峰閣湖月接駁車；Day 9 下午 14:08 在此搭富士迴遊 32 號直達新宿。"
+      },
+      "hub-shinjuku-south": {
+        id: "hub-shinjuku-south", cat: "hub", days: "Day 9",
+        zh: "JR 新宿站（新南口 / 南口計程車招呼站）", jp: "JR新宿駅 新南改札・南口タクシー乗り場",
+        kana: "じぇいあーる しんじゅくえき しんなんぐち",
+        query: "新宿駅 新南改札",
+        note: "富士迴遊抵 9/10 號月台後，直接搭電梯上新南口或南口出站搭計程車赴淺草，絕不進複雜地鐵轉乘！"
+      },
+
+      // --- 重要景點 (18) ---
+      "spot-zenkoji": {
+        id: "spot-zenkoji", cat: "spot", days: "Day 2",
+        zh: "國寶 善光寺（山門）", jp: "善光寺 山門",
+        kana: "ぜんこうじ さんもん",
+        query: "善光寺 長野",
+        note: "去程建議由飯店搭計程車直達山門免爬坡；若體驗地下「お戒壇巡り」請務必手牽扶手慢行。"
+      },
+      "spot-nagano-museum": {
+        id: "spot-nagano-museum", cat: "spot", days: "Day 2",
+        zh: "長野縣立美術館・東山魁夷館", jp: "長野県立美術館・東山魁夷館",
+        kana: "ながのけんりつびじゅつかん ひがしやまかいいかん",
+        query: "長野県立美術館 東山魁夷館",
+        note: "就在善光寺旁，週二正常開館！75 歲以上長輩出示護照享敬老優惠票 ¥500，室內溫暖好賞雪景。"
+      },
+      "spot-yawataya": {
+        id: "spot-yawataya", cat: "spot", days: "Day 2",
+        zh: "八幡屋礒五郎 本店（客製七味粉）", jp: "八幡屋礒五郎 本店",
+        kana: "やわたやいそごろう ほんてん",
+        query: "八幡屋礒五郎 本店",
+        note: "善光寺表參道百年七味粉名店，可現場為長輩客製化調配專屬香氣的七味粉伴手禮。"
+      },
+      "spot-togakushi-chusha": {
+        id: "spot-togakushi-chusha", cat: "spot", days: "Day 3",
+        zh: "戶隱神社 中社", jp: "戸隠神社 中社",
+        kana: "とがくしじんじゃ ちゅうしゃ",
+        query: "戸隠神社 中社",
+        note: "巴士直達門口，境內有數百年巨大三本杉神木與瀑布雪景，周邊有多家週三營業的溫暖蕎麥麵店。"
+      },
+      "spot-togakushi-okusha": {
+        id: "spot-togakushi-okusha", cat: "spot", days: "Day 3",
+        zh: "戶隱神社 奧社參道入口（隨神門）", jp: "戸隠神社 奥社参道入口",
+        kana: "とがくしじんじゃ おくしゃさんどういりぐち",
+        query: "戸隠神社 奥社参道入口",
+        note: "從中社搭計程車 5 分鐘抵達，務必預約同台司機 40 分鐘後來接！僅走平緩前段拍巨杉雪道即折返。"
+      },
+      "spot-snow-monkey": {
+        id: "spot-snow-monkey", cat: "spot", days: "Day 4",
+        zh: "地獄谷野猿公苑（彈性方案）", jp: "地獄谷野猿公苑",
+        kana: "じごくだに やえんこうえん",
+        query: "地獄谷野猿公苑",
+        note: "森林雪徑單程 1.6 公里（長輩慢行約 45–60 分鐘），需穿簡易冰爪；若路面結冰或膝蓋累請改方案 B 逛老街。"
+      },
+      "spot-shibu-onsen": {
+        id: "spot-shibu-onsen", cat: "spot", days: "Day 4",
+        zh: "澀溫泉老街（方案 B 慢活茶屋）", jp: "渋温泉 温泉街",
+        kana: "しぶおんせん おんせんがい",
+        query: "渋温泉",
+        note: "充滿昭和懷舊氛圍的石板溫泉街，路面冬季易滑請穿防滑雪靴，不可穿木屐行走。"
+      },
+      "spot-matsumoto-museum": {
+        id: "spot-matsumoto-museum", cat: "spot", days: "Day 5",
+        zh: "松本市美術館（草間彌生故鄉）", jp: "松本市美術館",
+        kana: "まつもとし びじゅつかん",
+        query: "松本市美術館",
+        note: "16:30 停止入場！已提前至 Day 5 下午 14:00 優先參觀，室內平緩舒適，門口巨大彩色花朵超好拍。"
+      },
+      "spot-matsumoto-castle": {
+        id: "spot-matsumoto-castle", cat: "spot", days: "Day 5",
+        zh: "國寶 松本城（外部公園賞雪）", jp: "松本城公園",
+        kana: "まつもとじょう こうえん",
+        query: "松本城",
+        note: "護城河平地即可拍出黑白城身配雪山絕景；天守閣內部木梯最陡達 61 度且須脫鞋，長輩切勿登城。"
+      },
+      "spot-yohashira": {
+        id: "spot-yohashira", cat: "spot", days: "Day 5",
+        zh: "四柱神社與繩手通商店街", jp: "四柱神社・縄手通り",
+        kana: "よはしらじんじゃ なわてどおり",
+        query: "四柱神社 松本",
+        note: "距離松本城步行僅 4 分鐘，青蛙主題復古老街平緩好逛，可順路買鯛魚燒點心。"
+      },
+      "spot-suwa-park": {
+        id: "spot-suwa-park", cat: "spot", days: "Day 6",
+        zh: "諏訪湖畔公園", jp: "諏訪湖畔公園",
+        kana: "すわこはんこうえん",
+        query: "諏訪湖畔公園",
+        note: "平坦無障礙湖岸步道，2 月極寒時有機會觀賞罕見冰裂奇景「御神渡」。"
+      },
+      "spot-katakurakan": {
+        id: "spot-katakurakan", cat: "spot", days: "Day 6",
+        zh: "片倉館（重要文化財歐風建築）", jp: "片倉館",
+        kana: "かたくらかん",
+        query: "片倉館 諏訪",
+        note: "建於 1928 年的復古西洋大浴場與建築，在諏訪湖畔散步順道打卡拍照非常有韻味。"
+      },
+      "spot-masumi": {
+        id: "spot-masumi", cat: "spot", days: "Day 6",
+        zh: "真澄酒造（甲州街道 諏訪五藏）", jp: "宮坂醸造 真澄（諏訪五蔵）",
+        kana: "ますみ しゅぞう すわごくら",
+        query: "宮坂醸造 真澄 諏訪",
+        note: "500 公尺平緩街道並列五家百年酒造，購買品酒套組淺酌冬季新酒，提醒長輩多喝水並留意血壓藥。"
+      },
+      "spot-oishi-park": {
+        id: "spot-oishi-park", cat: "spot", days: "Day 8",
+        zh: "河口湖 大石公園", jp: "大石公園（河口湖）",
+        kana: "おおいしこうえん かわぐちこ",
+        query: "大石公園 河口湖",
+        note: "秀峰閣湖月搭計程車僅 4 分鐘即達，完全平地無階梯，無死角拍攝富士山與雪白湖岸。"
+      },
+      "spot-music-forest": {
+        id: "spot-music-forest", cat: "spot", days: "Day 8",
+        zh: "河口湖 音樂盒之森美術館", jp: "河口湖 音楽と森の美術館",
+        kana: "かわぐちこ おんがくともりのびじゅつかん",
+        query: "河口湖 音楽と森の美術館",
+        note: "大石公園旁，歐風庭園背景就是富士山，室內有溫暖演奏廳欣賞世界最大自動管風琴表演。"
+      },
+      "spot-fuji-ropeway": {
+        id: "spot-fuji-ropeway", cat: "spot", days: "Day 8",
+        zh: "富士山全景纜車 / 天晴號遊覽船", jp: "富士山パノラマロープウェイ・河口湖遊覧船",
+        kana: "ふじさん ぱのらまろーぷうぇい",
+        query: "富士山パノラマロープウェイ",
+        note: "已略過需爬 398 階的新倉山淺間公園，改搭輕鬆省力的纜車或遊覽船從湖面仰望富士山。"
+      },
+      "spot-sensoji": {
+        id: "spot-sensoji", cat: "spot", days: "Day 10",
+        zh: "淺草寺 雷門・仲見世商店街", jp: "浅草寺 雷門",
+        kana: "せんそうじ かみなりもん",
+        query: "浅草寺 雷門",
+        note: "從淺草東武飯店步行只要 2 分鐘！建議 08:30 趁團體客還沒湧入前從容拍照參拜。"
+      },
+      "spot-ueno-park": {
+        id: "spot-ueno-park", cat: "spot", days: "Day 10",
+        zh: "上野恩賜公園・阿美橫丁採買", jp: "上野恩賜公園",
+        kana: "うえのおんしこうえん",
+        query: "上野恩賜公園",
+        note: "從淺草搭銀座線僅 3 站（有電梯）或搭計程車 8 分鐘；公園平緩散步，旁邊就是藥妝採買勝地。"
+      },
+
+      // --- 推薦美食 (6) ---
+      "food-midori": {
+        id: "food-midori", cat: "food", days: "Day 1・3",
+        zh: "MIDORI 長野百貨（信州豚肉味噌湯 / 2F 信州蔵）", jp: "MIDORI長野",
+        kana: "みどり ながの",
+        query: "MIDORI長野",
+        note: "與飯店及車站完全連通！3 樓吃熱騰騰信州豚肉味噌湯套餐，2 樓「信州蔵」可試飲地酒與買草莓。"
+      },
+      "food-ogawa": {
+        id: "food-ogawa", cat: "food", days: "Day 2",
+        zh: "小川之庄（信州御燒古民家茶房）", jp: "小川の庄 大門店（おやき村）",
+        kana: "おがわのしょう おやきむら",
+        query: "小川の庄 善光寺大門店",
+        note: "善光寺表參道下坡途中的傳統古民家，坐著喝熱茶配現烤野澤菜或紅豆「信州御燒」超暖胃。"
+      },
+      "food-sukitei": {
+        id: "food-sukitei", cat: "food", days: "Day 2",
+        zh: "壽喜亭 本店（信州和牛壽喜燒）", jp: "すき亭 本店",
+        kana: "すきてい ほんてん",
+        query: "すき亭 本店 長野",
+        note: "長野市區頂級信州和牛老店，肉質軟嫩好入口，非常適合四位長輩輕鬆享用豐盛晚餐。"
+      },
+      "food-niomonya": {
+        id: "food-niomonya", cat: "food", days: "Day 3",
+        zh: "仁王門屋（戶隱中社 週三營業蕎麥麵）", jp: "戸隠そば 仁王門屋（中社店）",
+        kana: "におうもんや とがくしそば",
+        query: "戸隠そば 仁王門屋",
+        note: "因うずら家週三公休且排隊過久，改選中社旁有溫暖室內座位的仁王門屋（或そばの実）吃熱湯大蝦蕎麥麵。"
+      },
+      "food-kobayashi": {
+        id: "food-kobayashi", cat: "food", days: "Day 6",
+        zh: "鰻魚飯 小林（上諏訪名店）", jp: "うなぎ 小林",
+        kana: "うなぎ こばやし",
+        query: "うなぎ 小林 諏訪",
+        note: "諏訪地區享譽全國的現烤鰻魚飯名店，醬香濃郁、魚肉鬆軟，冬日吃一碗元氣滿滿。"
+      },
+      "food-hotofudo": {
+        id: "food-hotofudo", cat: "food", days: "Day 7",
+        zh: "不動餺飥麵（河口湖站前店）", jp: "ほうとう不動 河口湖駅前店",
+        kana: "ほうとうふどう かわぐちこえきまえてん",
+        query: "ほうとう不動 河口湖駅前店",
+        note: "出河口湖車站過馬路即達！四人圍著大鐵鍋吃滿滿南瓜、野菜與寬麵熬煮的熱騰騰味噌麵。"
+      }
+    };
+
+    /* ==========================================================================
+       二、每日行程完整資料（Day 1 ～ Day 11，新增情境字卡直達按鈕）
+       ========================================================================== */
+    const ITINERARY_DAYS = [
+      {
+        day: 1, isoDate: "2027-02-15", pill: "D1 長野", date: "2/15（週一）",
+        title: "台中直飛東京 ➔ 上野轉新幹線 ➔ 長野",
+        flightLegId: "outbound",
+        badges: [
+          { text: "✈️ 星宇 JX314（台中T2➔成田T2）", cls: "badge-blue" },
+          { text: "🎬 附 2 支實景教學片", cls: "badge-red" },
+          { text: "🚆 複雜轉乘", cls: "badge-amber" },
+          { text: "🏨 連住長野第 1 晚", cls: "badge-green" }
+        ],
+        transitStageId: "stage-1",
+        transitBtnLabel: "🚆 查看今日「成田 ➔ 上野 ➔ 長野」詳細轉乘指引",
+        timeline: [
+          {
+            time: "06:45 機場報到",
+            title: "臺中國際機場「第 2 航廈」星宇航空 JX314 報到託運",
+            desc: "經濟艙機位已確認！提前 2.5 小時抵達第 2 航廈悠閒託運 4 件大行李與 4 支登山杖（行動電源與慢性病藥務必隨身帶上機）。",
+            placeId: "hub-rmq-t2"
+          },
+          {
+            time: "09:15 – 13:25",
+            title: "星宇航空 JX314 臺中 T2 直飛東京成田機場「第 2 航廈」",
+            desc: "飛行時間 3 小時 10 分鐘。抵達東京成田第 2 航廈 1 樓後，預留約 90 分鐘從容入境、領取 4 件大行李與上洗手間，完全不趕時間。",
+            placeId: "hub-narita-t2"
+          },
+          {
+            time: "15:02 – 15:43",
+            title: "京成電鐵 Skyliner 40 號直達京成上野站",
+            desc: "於機場 B1 搭全車指定席 Skyliner（車廂備有大型行李置放架，41 分鐘直達京成上野），避開複雜的東京車站！",
+            placeId: "hub-keisei-ueno",
+            phraseId: "rail-4seats",
+            phraseLabel: "🗣️ 出示「買 4 張相鄰指定席」日文字卡",
+            videoKey: "yt-skyliner"
+          },
+          {
+            time: "15:43 – 16:30",
+            title: "京成上野 ➔ JR 上野站（不忍口）從容轉乘",
+            desc: "京成上野搭電梯出「正面口」，右轉平緩走 1 分鐘過馬路進 JR 上野「不忍口」，搭大型電梯直下地下 4 樓北陸新幹線月台（預留 47 分鐘）。",
+            placeId: "hub-jr-ueno",
+            phraseId: "rail-elevator",
+            phraseLabel: "🗣️ 出示「尋找最近電梯」日文字卡",
+            videoKey: "yt-ueno-walk"
+          },
+          {
+            time: "16:30 – 17:44",
+            title: "北陸新幹線 光輝 511 號（かがやき 511）直達長野",
+            desc: "全車指定席，車程僅 1 小時 14 分即達長野站（若沒趕上可改搭 16:58 淺間 621 號）。",
+            placeId: "hub-jr-nagano"
+          },
+          {
+            time: "18:00 入住",
+            title: "長野大都會飯店（車站直結、免出站淋雪）",
+            desc: "出長野站 2 樓改札口直接走室內連通道搭電梯上樓辦理入住，零吹風淋雪，對長輩最友善！",
+            placeId: "hotel-nagano",
+            phraseId: "hotel-checkin",
+            phraseLabel: "🗣️ 出示「4 位大人入住」日文字卡"
+          },
+          {
+            time: "18:45 晚餐",
+            title: "車站 MIDORI 長野百貨 3 樓「信州豚肉味噌湯套餐」",
+            desc: "首晚不用走遠，直接下樓享用熱騰騰的長野當地味噌鍋物套餐暖胃早點休息。",
+            placeId: "food-midori"
+          }
+        ],
+        tip: "今日全段交通皆為「對號指定席」，請在機場或車站窗口直接出示字卡購買 4 人相鄰、靠近大行李架的座位。"
+      },
+      {
+        day: 2, isoDate: "2027-02-16", pill: "D2 善光寺", date: "2/16（週二）",
+        title: "長野市區慢活：善光寺 ➔ 東山魁夷館 ➔ 表參道",
+        badges: [
+          { text: "🚕 計程車免爬坡", cls: "badge-blue" },
+          { text: "👵 75歲敬老優惠", cls: "badge-green" },
+          { text: "🏨 連住長野第 2 晚", cls: "badge-amber" }
+        ],
+        timeline: [
+          {
+            time: "09:30 出發",
+            title: "飯店門口搭計程車直達「國寶善光寺」山門",
+            desc: "車程約 5–10 分鐘（四人合搭一車省力又免走結霜上坡）。欣賞白雪覆蓋的壯麗本堂；若長輩對全黑空間無不適，可牽好扶手體驗「お戒壇巡り」。",
+            placeId: "spot-zenkoji"
+          },
+          {
+            time: "11:15 室內賞畫",
+            title: "長野縣立美術館・東山魁夷館",
+            desc: "就在善光寺旁，週二正常開館！75 歲以上長輩出示護照享敬老優惠票 ¥500，在溫暖室內欣賞大師畫作與水鏡屋頂雪景。",
+            placeId: "spot-nagano-museum",
+            phraseId: "rail-senior",
+            phraseLabel: "🗣️ 出示「詢問 75 歲敬老優惠票」日文字卡"
+          },
+          {
+            time: "12:30 午餐",
+            title: "表參道百年老店（藤屋御本陣 / 大丸蕎麥麵）",
+            desc: "享用熱呼呼的鴨肉蕎麥麵暖身，點餐時可請店家將麵條煮軟一點並提供熱茶。",
+            placeId: "spot-zenkoji",
+            phraseId: "food-soft",
+            phraseLabel: "🗣️ 出示「麵煮軟、少鹽、分食小碗」字卡"
+          },
+          {
+            time: "14:00 午後散步",
+            title: "沿表參道緩步下坡：八幡屋礒五郎本店 ＆ 小川之庄午茶",
+            desc: "午後太陽融雪後沿表參道慢慢往車站方向下坡，先客製專屬七味粉，再到古民家茶房「小川之庄」品嚐現烤信州御燒（野澤菜／紅豆）配熱茶避寒。",
+            placeId: "food-ogawa",
+            extraPlaceId: "spot-yawataya"
+          },
+          {
+            time: "18:00 晚餐",
+            title: "市區名店「壽喜亭 本店」享用信州和牛壽喜燒",
+            desc: "軟嫩入口即化的頂級信州和牛，吃飽輕鬆搭短程計程車回長野大都會飯店休息。",
+            placeId: "food-sukitei"
+          }
+        ],
+        tip: "記得隨身攜帶 4 位長輩的護照正本！參觀長野縣立美術館出示護照即可享有 75 歲以上敬老優惠。"
+      },
+      {
+        day: 3, isoDate: "2027-02-17", pill: "D3 戶隱", date: "2/17（週三）",
+        title: "戶隱神社中社雪景 ➔ 奧社隨神門",
+        badges: [
+          { text: "📦 今晚寄大行李往松本", cls: "badge-solid-amber" },
+          { text: "⚠️ 避開週三公休名店", cls: "badge-red" },
+          { text: "🚆 山區巴士與計程車", cls: "badge-blue" }
+        ],
+        transitStageId: "stage-2",
+        transitBtnLabel: "🚆 查看今日「戶隱巴士與奧社預約計程車」指引",
+        timeline: [
+          {
+            time: "08:30 – 09:44",
+            title: "長野站善光寺口 7 號巴士月台搭 70 系統戶隱線上山",
+            desc: "搭乘川中島巴士（車程約 1 小時 14 分，¥1,350），沿途欣賞滿山銀白色的夢幻雪森林。",
+            placeId: "hub-nagano-bus7"
+          },
+          {
+            time: "09:45 參拜",
+            title: "戶隱神社 中社（千年三本杉神木）",
+            desc: "巴士直接停在中社門口，輕鬆參拜莊嚴的百年神木與冰瀑雪景。",
+            placeId: "spot-togakushi-chusha"
+          },
+          {
+            time: "11:30 午餐",
+            title: "中社旁「仁王門屋」或「そばの実」熱湯天婦羅蕎麥麵",
+            desc: "【已修正公休】名店うずら家週三固定公休且冬季需雪地久候，改於週三正常營業且有暖氣座位的老店安心用餐。",
+            placeId: "food-niomonya"
+          },
+          {
+            time: "13:00 拍照折返",
+            title: "計程車赴「戶隱神社奧社參道入口」（務必預約回程！）",
+            desc: "從中社搭計程車 5 分鐘到入口，下車時務必約好同台司機 40 分鐘後來接！僅於平緩前段拍雪中巨杉林與隨神門即折返，不勉強深入深雪。",
+            placeId: "spot-togakushi-okusha",
+            phraseId: "taxi-togakushi",
+            phraseLabel: "🗣️ 出示「預約 40 分鐘後來接」字卡給司機看",
+            styleType: "warning"
+          },
+          {
+            time: "15:18 – 16:23",
+            title: "搭巴士下山返抵長野站 ➔ MIDORI 2 樓信州蔵",
+            desc: "返站後可至 MIDORI 2 樓體驗投幣清酒試飲，採買長野大顆草莓與零食。",
+            placeId: "food-midori"
+          },
+          {
+            time: "18:00 前重要任務",
+            title: "📦 飯店櫃台寄出 4 件大行李箱往「松本里士滿飯店」",
+            desc: "請於長野大都會飯店櫃台辦理黑貓宅急便，僅留明天 1 日換洗衣物與隨身常備藥裝輕便小包。晚上在車站旁居酒屋輕鬆吃信州地雞。",
+            placeId: "hotel-nagano",
+            phraseId: "hotel-kuroneko",
+            phraseLabel: "🗣️ 出示「黑貓寄送 4 件大行李」字卡給櫃台",
+            styleType: "important"
+          }
+        ],
+        tip: "山區冬季幾乎沒有空計程車經過！抵達奧社入口時一定要拿字卡跟司機約好「40 分鐘後來這裡接我們」，避免在低溫中久等。"
+      },
+      {
+        day: 4, isoDate: "2027-02-18", pill: "D4 澀溫泉", date: "2/18（週四）",
+        title: "長野電鐵特急 ➔ 湯田中 ➔ 雪猴（彈性）➔ 澀溫泉",
+        badges: [
+          { text: "♨️ 換宿輕裝日", cls: "badge-amber" },
+          { text: "🚆 複雜轉乘（禁刷IC卡）", cls: "badge-red" }
+        ],
+        transitStageId: "stage-3",
+        transitBtnLabel: "🚆 查看今日「長野電鐵地下月台購票」指引",
+        timeline: [
+          {
+            time: "09:53 – 10:50",
+            title: "長野站地下 1 樓搭「長野電鐵特急」直達湯田中站",
+            desc: "【重要提醒】長野電鐵不能刷 Suica/ICOCA！請在 B1 窗口以現金或信用卡購買特急券＋乘車券（合計約 ¥2,060）。",
+            placeId: "hub-nagaden-nagano",
+            phraseId: "rail-nagaden",
+            phraseLabel: "🗣️ 出示「買往湯田中特急券 4 張」字卡",
+            styleType: "warning"
+          },
+          {
+            time: "11:00 寄放小包",
+            title: "抵達湯田中站 ➔ 搭飯店接駁車或計程車先放隨身包",
+            desc: "因為大行李已寄去松本，今天背輕裝移動非常輕鬆！",
+            placeId: "hub-yudanaka"
+          },
+          {
+            time: "12:00 彈性二選一",
+            title: "【視雪況與膝蓋體力】雪猴公苑 OR 澀溫泉茶屋慢活",
+            desc: "・方案 A（雪況佳、精神好）：套上簡易冰爪搭車至入口，慢行往返地獄谷野猿公苑（單程 1.6 公里，長輩慢行約 45–60 分鐘）。\n・方案 B（路面結冰或微累）：不硬走雪地山徑，改在澀溫泉老街茶屋吃熱溫泉饅頭、暖暖喝茶！",
+            placeId: "spot-snow-monkey",
+            extraPlaceId: "spot-shibu-onsen",
+            styleType: "important"
+          },
+          {
+            time: "15:00 入住",
+            title: "百年文化財木造旅館「歷史之宿 金具屋」",
+            desc: "全館四層木造無電梯，已備註請求安排低樓層客房。傍晚在館內多座特色室內湯屋與貸切風呂安心泡湯。",
+            placeId: "hotel-kanaguya",
+            phraseId: "hotel-lowfloor",
+            phraseLabel: "🗣️ 出示「請求安排低樓層客房」字卡"
+          },
+          {
+            time: "18:30 晚餐與夜景",
+            title: "館內精緻會席料理 ➔ 門口拍夢幻點燈夜景",
+            desc: "【安全叮嚀】晚上穿保暖防滑雪靴在旅館門口拍點燈夜景即可，切勿穿木屐走結冰石板路巡外湯，防止滑倒與熱休克！",
+            placeId: "hotel-kanaguya",
+            styleType: "warning"
+          }
+        ],
+        tip: "雪猴步道若當日下雪或路面結冰，請毫不猶豫選擇「方案 B」留在溫暖茶屋與旅館享受百年溫泉，長輩膝蓋安全永遠第一！"
+      },
+      {
+        day: 5, isoDate: "2027-02-19", pill: "D5 松本", date: "2/19（週五）",
+        title: "湯田中 ➔ 長野轉信濃號 ➔ 松本市美術館 ➔ 松本城",
+        badges: [
+          { text: "🏨 換宿領回大行李", cls: "badge-green" },
+          { text: "⚠️ 提早 14:00 進美術館", cls: "badge-amber" },
+          { text: "🚆 跨站轉乘", cls: "badge-blue" }
+        ],
+        transitStageId: "stage-4",
+        transitBtnLabel: "🚆 查看今日「湯田中 ➔ 長野轉 JR 信濃號」指引",
+        timeline: [
+          {
+            time: "09:37 – 10:25",
+            title: "從容吃完早餐 ➔ 湯田中站搭長野電鐵特急返長野",
+            desc: "搭旅館接駁車赴湯田中站，搭特急回長野站 B1，搭電梯上 2 樓銜接 JR（預留 35 分鐘非常充裕）。",
+            placeId: "hub-yudanaka"
+          },
+          {
+            time: "11:00 – 11:51",
+            title: "JR 長野站 6 號月台搭特急「信濃 10 號」赴松本",
+            desc: "51 分鐘直達松本站！從「お城口」搭電梯下 1 樓，先到「松本里士滿飯店」領回大行李並寄放，車站旁吃午餐。",
+            placeId: "hotel-matsumoto",
+            phraseId: "hotel-receive",
+            phraseLabel: "🗣️ 出示「領取預寄的 4 件大行李」字卡"
+          },
+          {
+            time: "14:00 優先參觀",
+            title: "松本市美術館（草間彌生巨型花朵雕塑與特展）",
+            desc: "【已修正時間】本館 16:30 停止入場（原 17:00 會閉館撲空），優先安排 14:00 搭計程車抵達，在溫暖安靜的館內慢賞大師真跡。",
+            placeId: "spot-matsumoto-museum",
+            styleType: "important"
+          },
+          {
+            time: "15:45 公園賞雪",
+            title: "計程車 4 分鐘至「國寶松本城」外部公園 ＆ 四柱神社",
+            desc: "在護城河公園平地拍攝漆黑天守映白雪與阿爾卑斯山脈（天守閣內木梯達 61 度極陡且須脫鞋，長輩請勿登城）。順遊步行 4 分鐘的四柱神社與繩手通。",
+            placeId: "spot-matsumoto-castle",
+            extraPlaceId: "spot-yohashira"
+          },
+          {
+            time: "18:30 晚餐",
+            title: "中町通古民家餐廳享用松本地酒與鄉土料理",
+            desc: "飯後散步回松本里士滿飯店連住第 1 晚。",
+            placeId: "hotel-matsumoto"
+          }
+        ],
+        tip: "松本城內部階梯陡如攀岩且木地板冰冷，四位長輩在外部公園與朱紅埋橋拍照最美也最護膝！"
+      },
+      {
+        day: 6, isoDate: "2027-02-20", pill: "D6 上諏訪", date: "2/20（週六）",
+        title: "上諏訪一日慢遊：車站足湯 ➔ 諏訪湖 ➔ 鰻魚飯 ➔ 五藏清酒",
+        badges: [
+          { text: "♨️ 月台溫泉足湯", cls: "badge-amber" },
+          { text: "🍶 諏訪五藏微醺", cls: "badge-blue" },
+          { text: "🏨 連住松本第 2 晚", cls: "badge-green" }
+        ],
+        timeline: [
+          {
+            time: "09:10 – 09:33",
+            title: "松本站 2 號月台搭 JR 特急「梓 16 號」直達上諏訪",
+            desc: "僅需 23 分鐘即達，全車指定席輕鬆舒適。",
+            placeId: "hub-jr-matsumoto"
+          },
+          {
+            time: "09:40 獨家體驗",
+            title: "月台內「上諏訪站天然溫泉足湯」暖腳",
+            desc: "下車先別急著出站，直接在月台泡熱呼呼的溫泉足湯！（記得隨身攜帶小毛巾擦腳）",
+            placeId: "hub-kamisuwa"
+          },
+          {
+            time: "10:30 湖畔漫步",
+            title: "諏訪湖畔公園 ＆ 歐風文化財「片倉館」",
+            desc: "平緩湖岸散步欣賞冬日靜謐湖光，2 月極寒時有機會看到罕見冰裂隆起奇景「御神渡」。",
+            placeId: "spot-suwa-park",
+            extraPlaceId: "spot-katakurakan"
+          },
+          {
+            time: "12:00 午餐",
+            title: "名店「鰻魚飯 小林」享用現烤鰻魚飯",
+            desc: "諏訪地區水質極佳，現烤炭香鰻魚肉質細嫩暖胃。",
+            placeId: "food-kobayashi",
+            phraseId: "food-chairs",
+            phraseLabel: "🗣️ 出示「安排有椅子的餐桌座」字卡"
+          },
+          {
+            time: "14:00 微醺散策",
+            title: "甲州街道「諏訪五藏」清酒巡禮（真澄等五家酒造）",
+            desc: "長約 500 公尺平緩街道並列五家百年酒造，買品酒套組沿街淺酌冬季新酒（提醒長輩多喝水、有服降血壓藥需控制飲酒量）。",
+            placeId: "spot-masumi"
+          },
+          {
+            time: "16:14 – 16:39",
+            title: "搭特急「梓 29 號」返回松本",
+            desc: "輕鬆返回松本市區自由晚餐，續住松本里士滿飯店。",
+            placeId: "hotel-matsumoto"
+          }
+        ],
+        tip: "今天出門前請把「4 條小毛巾」放進隨身包泡足湯用；同時先確認 4 張交通 IC 卡（Suica/ICOCA）餘額有 ¥1,500 以上，明天大月站轉乘馬上要用！"
+      },
+      {
+        day: 7, isoDate: "2027-02-21", pill: "D7 河口湖", date: "2/21（週日）",
+        title: "松本 ➔ 大月站轉富士急行線 ➔ 河口湖頂級湖景溫泉",
+        badges: [
+          { text: "🚆 複雜轉乘（關鍵口訣）", cls: "badge-red" },
+          { text: "🎬 附大月轉乘實景片", cls: "badge-red" },
+          { text: "🗻 換宿北岸湖景飯店", cls: "badge-amber" }
+        ],
+        transitStageId: "stage-5",
+        transitBtnLabel: "🚆 查看今日「大月站轉富士急行線」關鍵指引",
+        timeline: [
+          {
+            time: "09:10 – 10:53",
+            title: "松本站 2 號月台搭 JR 特急「梓 16 號」至大月站",
+            desc: "車程 1 小時 43 分，沿途欣賞甲斐群山風光。",
+            placeId: "hub-jr-matsumoto"
+          },
+          {
+            time: "10:53 – 11:06",
+            title: "大月站轉乘富士急行線 ➔ 12:05 抵河口湖站",
+            desc: "沿地面指標走富士急行線連絡口：交 JR 紙票＋同時刷預存好的 Suica/ICOCA 過閘免買票！若趕不上 11:06 切勿奔跑，從容等下一班即可。",
+            placeId: "hub-otsuki",
+            phraseId: "rail-otsuki",
+            phraseLabel: "🗣️ 出示「大月站轉乘刷 IC 卡確認」字卡",
+            videoKey: "yt-otsuki-transfer",
+            styleType: "warning"
+          },
+          {
+            time: "12:40 午餐",
+            title: "「不動餺飥麵（河口湖站前店）」味噌鐵鍋麵",
+            desc: "就在車站正對面！四人圍著大鐵鍋大口吃滿滿南瓜與季節野菜熬煮的熱味噌麵。",
+            placeId: "food-hotofudo"
+          },
+          {
+            time: "14:30 提早入住",
+            title: "河口湖站 10 號乘車處搭免費接駁車赴「秀峰閣湖月」",
+            desc: "刻意避開週日下午纜車超長排隊人潮，提早入住河口湖北岸正對富士山的頂級溫泉飯店。",
+            placeId: "hotel-kogetsu"
+          },
+          {
+            time: "16:30 房內賞景",
+            title: "房間泡茶 ＆ 露天溫泉靜賞 17:15「赤富士」夕陽",
+            desc: "完全不吹冷風，在房間陽台與溫泉池看著夕陽把富士山染成金紅與粉紫色。晚間享用飯店精緻懷石晚宴。",
+            placeId: "hotel-kogetsu"
+          }
+        ],
+        tip: "今晚睡前請先跟秀峰閣湖月櫃台確認明早「黑貓宅急便最晚收件時間」（通常為上午 10:00 前），明天 09:00 前就要把大行李寄去淺草！"
+      },
+      {
+        day: 8, isoDate: "2027-02-22", pill: "D8 逆富士", date: "2/22（週一）",
+        title: "河口湖輕鬆雙景：逆富士 ➔ 大石公園 ➔ 音樂盒之森",
+        badges: [
+          { text: "📦 今早寄大行李往淺草", cls: "badge-solid-amber" },
+          { text: "🚫 略過 398 階護膝", cls: "badge-green" }
+        ],
+        timeline: [
+          {
+            time: "07:00 清晨限定",
+            title: "房間陽台或飯店門前湖畔賞鏡面「逆富士」",
+            desc: "2 月清晨通常無風，出門就能看見整座富士山完美倒映在平靜湖面上。",
+            placeId: "hotel-kogetsu"
+          },
+          {
+            time: "09:00 前重要任務",
+            title: "📦 櫃台辦理黑貓宅急便：寄出 4 件大行李往「淺草東武飯店」",
+            desc: "明天搭富士迴遊回新宿適逢日本國定假日，提前寄出大行李讓明天雙手空空最輕鬆！",
+            placeId: "hotel-kogetsu",
+            phraseId: "hotel-kuroneko",
+            phraseLabel: "🗣️ 出示「黑貓寄送 4 件大行李」字卡給櫃台",
+            styleType: "important"
+          },
+          {
+            time: "09:30 短程計程車",
+            title: "計程車 4 分鐘至「大石公園」無死角拍富士山",
+            desc: "全平地好走，雪白湖岸配純淨富士山，隨手一拍就是明信片。",
+            placeId: "spot-oishi-park"
+          },
+          {
+            time: "11:00 室內聽演奏",
+            title: "平緩步行 10 分鐘至「河口湖 音樂盒之森美術館」＆ 午餐",
+            desc: "歐風莊園背景隨時有富士山相伴，中午在溫暖室內欣賞巨型自動管風琴表演並享午餐。",
+            placeId: "spot-music-forest"
+          },
+          {
+            time: "14:00 輕鬆賞景",
+            title: "視天氣搭「富士山全景纜車」或「天晴號遊覽船」",
+            desc: "【護膝調整】已貼心略過需爬 398 級冬季結霜陡階的新倉山淺間公園，改以纜車或遊覽船輕鬆飽覽富士山全景。傍晚回飯店連住第 2 晚。",
+            placeId: "spot-fuji-ropeway"
+          }
+        ],
+        tip: "今天完全沒有陡坡與長階梯！下午若長輩覺得想休息，也可以提早回秀峰閣湖月邊看富士山邊泡湯。"
+      },
+      {
+        day: 9, isoDate: "2027-02-23", pill: "D9 淺草", date: "2/23（週二・天皇誕生日）",
+        title: "河口湖 ➔ 富士迴遊號 ➔ 新宿搭計程車直達淺草",
+        badges: [
+          { text: "🚆 新宿計程車脫困策略", cls: "badge-blue" },
+          { text: "🎌 日本國定假日", cls: "badge-red" }
+        ],
+        transitStageId: "stage-6",
+        transitBtnLabel: "🚆 查看今日「新宿站南口免迷路搭計程車」指引",
+        timeline: [
+          {
+            time: "上午慢活",
+            title: "秀峰閣湖月慢用早餐、湖畔散策與最後泡湯",
+            desc: "11:00 退房後背輕便小包搭接駁車至河口湖車站周邊享用午餐與採買富士山伴手禮。",
+            placeId: "hub-kawaguchiko"
+          },
+          {
+            time: "14:08 – 16:06",
+            title: "特急「富士迴遊 32 號」一車直達 JR 新宿站",
+            desc: "全車指定席免換車！因適逢日本國定假日，務必於 2027/1/23 台灣時間 09:00 準時上官網搶票。",
+            placeId: "hub-kawaguchiko",
+            styleType: "important"
+          },
+          {
+            time: "16:15 避坑策略",
+            title: "JR 新宿站新南口／南口搭計程車直達「淺草東武飯店」",
+            desc: "【黃金策略】絕不進傍晚人潮爆滿的新宿地鐵／JR 轉乘！搭電梯直上新南口或南口，4 人僅背輕裝搭 1 台計程車直達淺草飯店門口（約 25–30 分鐘、約 ¥6,000 四人平分極省力）。",
+            placeId: "hub-shinjuku-south",
+            extraPlaceId: "hotel-asakusa",
+            styleType: "warning"
+          },
+          {
+            time: "16:50 入住領行李",
+            title: "入住「淺草東武飯店」並領回已送達的大件行李",
+            desc: "領回昨天從河口湖寄來的 4 件大行李箱，晚餐就在雷門周邊輕鬆享用東京美食。連住淺草第 1 晚。",
+            placeId: "hotel-asakusa",
+            phraseId: "hotel-receive",
+            phraseLabel: "🗣️ 出示「領取預寄的 4 件大行李」字卡"
+          }
+        ],
+        tip: "今天是日本國定假日「天皇誕生日」，新宿車站人潮非常多，跟著電梯指標出「新南口」直接搭計程車是最聰明省體力的做法。"
+      },
+      {
+        day: 10, isoDate: "2027-02-24", pill: "D10 東京", date: "2/24（週三）",
+        title: "淺草寺清晨慢拜 ➔ 上野恩賜公園採買",
+        badges: [
+          { text: "⛩️ 雷門步行 2 分鐘", cls: "badge-blue" },
+          { text: "🛍️ 藥妝伴手禮日", cls: "badge-green" },
+          { text: "🏨 連住淺草第 2 晚", cls: "badge-amber" }
+        ],
+        timeline: [
+          {
+            time: "08:30 清晨參拜",
+            title: "步行 2 分鐘至「雷門」、「淺草寺」與「仲見世商店街」",
+            desc: "趁團體觀光客湧入前，在清晨舒爽空氣中從容拍雷門大燈籠、抽籤參拜、吃人形燒。",
+            placeId: "spot-sensoji"
+          },
+          {
+            time: "12:00 午餐與午休",
+            title: "淺草百年老店享用天婦羅或壽喜燒 ➔ 回飯店小憩",
+            desc: "因為飯店就在旁邊，中午吃飽可以先回房間坐著歇歇腳再出門，超愜意！",
+            placeId: "hotel-asakusa"
+          },
+          {
+            time: "14:30 午後採買",
+            title: "搭銀座線（僅 3 站、有電梯）或計程車赴「上野恩賜公園」",
+            desc: "在寬敞平緩的上野公園散步，接著到阿美橫丁與藥妝店補齊清單（梅片、合利他命、胃藥、發熱衣、干貝粒），記得帶護照辦免稅！",
+            placeId: "spot-ueno-park",
+            phraseId: "shop-taxfree",
+            phraseLabel: "🗣️ 出示「辦理免稅結帳」日文字卡"
+          },
+          {
+            time: "晚間整理行李",
+            title: "【飛安打包提醒】登山杖放託運、行動電源放隨身包",
+            desc: "睡前確認 4 支登山杖與超過 100ml 乳液藥膏全數放入託運行李箱；行動電源 × 3 與慢性病處方藥放隨身登機包。",
+            placeId: "hotel-asakusa",
+            styleType: "important"
+          }
+        ],
+        tip: "請於今晚先告知淺草東武飯店櫃台，明早 08:30 需要協助叫「2 台標準計程車」前往京成上野站。"
+      },
+      {
+        day: 11, isoDate: "2027-02-25", pill: "D11 返台", date: "2/25（週四）",
+        title: "淺草分搭 2 台計程車 ➔ 京成上野 Skyliner ➔ 返抵台中",
+        flightLegId: "inbound",
+        badges: [
+          { text: "✈️ 星宇 JX315（成田T2➔台中T2）", cls: "badge-blue" },
+          { text: "🚕 務必分搭 2 台計程車", cls: "badge-red" }
+        ],
+        transitStageId: "stage-6",
+        transitBtnLabel: "🚆 查看今日「淺草叫 2 台車 ➔ Skyliner 返台」指引",
+        timeline: [
+          {
+            time: "08:30 退房出發",
+            title: "淺草東武飯店門口分搭「2 台標準計程車」赴京成上野站",
+            desc: "【重要提醒】4 位長輩＋4 件大行李箱塞不進 1 台標準計程車！務必分搭 2 台（每台車程 6–10 分鐘、車資約 ¥1,200）最寬敞舒適。",
+            placeId: "hub-keisei-ueno",
+            phraseId: "taxi-two-ueno",
+            phraseLabel: "🗣️ 出示「幫叫 2 台計程車去京成上野」字卡",
+            styleType: "warning"
+          },
+          {
+            time: "09:17 – 09:58",
+            title: "京成電鐵 Skyliner 123 號直達成田機場「第 2 航廈」",
+            desc: "全車指定席附大行李區，僅 41 分鐘直達機場（備案班次 09:00 或 09:40），全程坐得穩穩的免站立。",
+            placeId: "hub-narita-t2"
+          },
+          {
+            time: "10:15 報到託運",
+            title: "搭電梯直上 3 樓出境大廳 ➔ 星宇航空 JX315 報到",
+            desc: "經濟艙機位已確認！時間非常充裕（約起飛前 2.5–3 小時開櫃），辦完託運、過安檢後可在機場餐廳悠閒吃午餐與免稅店最後巡禮。",
+            placeId: "hub-narita-t2",
+            phraseId: "air-checkin",
+            phraseLabel: "🗣️ 出示「星宇 JX315 報到（4位大人）」字卡"
+          },
+          {
+            time: "14:25 – 17:55",
+            title: "搭乘星宇航空 JX315（飛行 4 小時 30 分）平安返抵臺中「第 2 航廈」",
+            desc: "滿載長野白雪、溫泉與富士山的美好回憶，17:55 平安降落臺中國際機場第 2 航廈，圓滿賦歸！",
+            placeId: "hub-rmq-t2"
+          }
+        ],
+        tip: "返台搭機前再次確認：4 支折疊登山杖皆已放進大行李箱託運，行動電源與個人隨身藥品皆在隨身登機包內；可於 2/23 14:25 後先辦星宇 48H 網路預辦登機！"
+      }
+    ];
+
+    /* ==========================================================================
+       三、6 大複雜交通關卡詳細指引
+       ========================================================================== */
+    const TRANSIT_STAGES = [
+      {
+        id: "stage-1",
+        dayTag: "Day 1（2/15 週一）",
+        shortPill: "關卡1：成田➔長野",
+        title: "關卡 1：成田機場 T2 ➔ 京成 Skyliner ➔ JR 上野北陸新幹線 ➔ 長野",
+        overview: "總計約 2 小時 45 分鐘（含 47 分鐘上野從容轉乘），全段指定席＋電梯無障礙動線。",
+        steps: [
+          "抵達成田機場第二航廈 1 樓入境大廳領完行李後，找「鉄道（Railways）」指標搭大型電梯下至地下 1 樓（B1）。",
+          "在藍色「Keisei Skyliner 售票處」買 4 張 15:02 發車的 Skyliner 40 號指定席（請要 4 人相鄰座位），從 1 號月台乘車並將大行李放車廂行李架。",
+          "15:43 抵達終點「京成上野站」，搭電梯上地面層從「正面口」出站。",
+          "出正面口後向右轉，沿平緩人行道走約 1 分鐘過紅綠燈馬路，進入對面「JR 上野站 不忍口」。",
+          "進站後跟著綠色「新幹線（北陸新幹線）」標誌通過新幹線轉乘口，務必搭乘大型電梯直下地下 4 樓（19–20 號月台）候車（切勿扛行李搭長手扶梯）。",
+          "搭乘 16:30「光輝 511 號（かがやき 511）」於 17:44 抵長野站；出 2 樓新幹線改札口走室內連通道直進長野大都會飯店，免出站淋雪！"
+        ],
+        alerts: [
+          "「光輝號（かがやき）」為全車指定席，沒有自由席，上車前務必領好劃位指定席票；若班機延誤可改搭 16:58「淺間 621 號」。",
+          "上野站新幹線月台位在地下 4 樓非常深，請認明「エレベーター（電梯）」圖示，一次直達月台層最省力。"
+        ],
+        placeIds: ["hub-narita-t2", "hub-keisei-ueno", "hub-jr-ueno", "hotel-nagano"],
+        phraseIds: ["rail-4seats", "rail-elevator"],
+        videoKeys: ["yt-skyliner", "yt-ueno-walk"]
+      },
+      {
+        id: "stage-2",
+        dayTag: "Day 3（2/17 週三）",
+        shortPill: "關卡2：戶隱防滯留",
+        title: "關卡 2：長野站 7 號巴士月台 ➔ 戶隱中社 ➔ 奧社隨神門（防滯留指引）",
+        overview: "單程巴士約 1 小時 14 分鐘；山區計程車往返奧社入口務必提前預約回程。",
+        steps: [
+          "08:10 從長野大都會飯店步行至長野站「善光寺口」1 樓，過馬路到對面「Alpico 交通案內所」旁的「7 號巴士月台」候車。",
+          "08:30 搭乘「70 系統 戶隱線」川中島巴士上山（刷 IC 卡或抽整理券下車投現 ¥1,350），09:44 於「戶隱中社」下車。",
+          "參拜中社並在仁王門屋用完午餐後，約 13:00 於中社前搭計程車（車程 5 分鐘）至「戶隱神社奧社參道入口」。",
+          "【最關鍵一步】抵達奧社入口下車前，立刻點開字卡請同台司機「40 分鐘後回到此處接我們回中社」，並記下車號或司機名片！",
+          "平緩漫步拍巨杉雪景後搭預約計程車返回中社，搭乘 15:18 巴士下山，16:23 返抵長野站。"
+        ],
+        alerts: [
+          "2 月戶隱山區幾乎攔不到路邊空計程車！若沒先跟去程司機約好回程接駁，4 位長輩會在零下雪地中苦等受寒。",
+          "冬季巴士 15:18 之後班次稀少，請務必於 15:05 前回到中社巴士站牌候車。"
+        ],
+        placeIds: ["hub-nagano-bus7", "spot-togakushi-chusha", "spot-togakushi-okusha"],
+        phraseIds: ["taxi-togakushi", "taxi-flat-snow"]
+      },
+      {
+        id: "stage-3",
+        dayTag: "Day 4（2/18 週四）",
+        shortPill: "關卡3：長野電鐵",
+        title: "關卡 3：長野站 ➔ 長野電鐵（地下 1 樓）➔ 湯田中 ➔ 澀溫泉",
+        overview: "電車車程 57 分鐘＋旅館接駁車 5 分鐘；全程背 1 日輕便小包移動。",
+        steps: [
+          "確認大行李昨晚已寄往松本！背輕便小包走到長野站「善光寺口」1 樓站前廣場右側（往東急百貨方向）。",
+          "找到「長野電鉄（Nagaden）」專屬電梯下至地下 1 樓（B1F）。",
+          "於人工售票窗口直接出示字卡，購買 4 張 09:53 發車往湯田中的「乘車券＋特急券（合計約 ¥2,060）」。",
+          "搭特急列車（全車對號或展望車廂，視車型）於 10:50 抵達終點「湯田中站」。",
+          "出站後聯絡／搭乘「歷史之宿 金具屋」免費接駁車（或計程車 5 分鐘）直達澀溫泉旅館。"
+        ],
+        alerts: [
+          "🚨 長野電鐵完全不能刷 Suica / ICOCA / PASMO！刷卡閘門會擋住，務必帶日幣現金或信用卡在 B1 窗口買紙本車票。",
+          "若計劃前往地獄谷野猿公苑，請在湯田中站確認當日步道是否結冰，長輩隨時可改為方案 B 留老街茶屋休息。"
+        ],
+        placeIds: ["hub-nagaden-nagano", "hub-yudanaka", "hotel-kanaguya"],
+        phraseIds: ["rail-nagaden", "hotel-lowfloor"]
+      },
+      {
+        id: "stage-4",
+        dayTag: "Day 5（2/19 週五）",
+        shortPill: "關卡4：長野轉松本",
+        title: "關卡 4：湯田中 ➔ 長野跨站轉 JR 特急信濃號 ➔ 松本",
+        overview: "長野電鐵 48 分鐘＋跨站轉乘 35 分鐘＋JR 特急信濃號 51 分鐘，時間寬裕不趕車。",
+        steps: [
+          "悠閒享用金具屋早餐後，搭旅館專車送至「湯田中站」，搭乘 09:37 長野電鐵特急返回長野。",
+          "10:25 抵達長野電鐵地下 1 樓，搭電梯回到 1 樓地面層，再搭電梯進入 JR 長野站 2 樓「在來線（一般列車）改札口」。",
+          "預留 35 分鐘極充裕，可從容上洗手間與買熱飲，接著搭電梯下至「6 號月台」。",
+          "搭乘 11:00 發車之 JR 特急「信濃 10 號（しなの 10，往名古屋）」，11:51 抵達「JR 松本站」。",
+          "松本站出閘門往「お城口（東口）」搭電梯至 1 樓，步行平緩 6 分鐘（或搭計程車 2 分鐘）抵松本里士滿飯店領回大行李。"
+        ],
+        alerts: [
+          "長野站有「新幹線改札」與「在來線改札」兩個不同入口，往松本的特急信濃號請走「在來線（中央線・篠ノ井線）」改札口 6 號月台。",
+          "松本站內抵達後先去飯店領回寄達的大行李，再輕裝於 14:00 準時前往松本市美術館（16:30 截止入場）。"
+        ],
+        placeIds: ["hub-yudanaka", "hub-jr-nagano", "hub-jr-matsumoto", "hotel-matsumoto"],
+        phraseIds: ["rail-elevator", "hotel-receive"]
+      },
+      {
+        id: "stage-5",
+        dayTag: "Day 7（2/21 週日）",
+        shortPill: "關卡5：大月轉河口湖",
+        title: "關卡 5：松本 ➔ 大月站轉乘富士急行線 ➔ 河口湖（最關鍵教學）",
+        overview: "全程約 2 小時 55 分鐘；大月站轉乘時間 13 分鐘，備妥 IC 卡即可秒過閘免出大站。",
+        steps: [
+          "09:10 於松本站 2 號月台搭乘 JR 特急「梓 16 號（あずさ 16）」，10:53 抵達「JR 大月站」。",
+          "下車後不要上天橋出大月站大門！直接看月台地面大型藍色箭頭「富士急行線 乗換口（連絡口）」，順著月台往連絡閘門走。",
+          "【關鍵過閘口訣】走到富士急行線轉乘閘門時：將 JR 紙本車票投入閘門（或直接交給一旁站務員）＋ 同時拿出已儲值 ≥ ¥1,500 的 Suica/ICOCA 感應黃色讀卡機，即可直接進入富士急行線月台！",
+          "於 1 號或 2 號月台搭乘 11:06 富士急行線普通／快速列車，12:05 抵達終點「河口湖站」。",
+          "吃完車站正對面的不動餺飥麵後，於車站前「10 號乘車處」搭乘「秀峰閣湖月」免費接駁車（或計程車 9 分鐘）直達飯店。"
+        ],
+        alerts: [
+          "🚨 10:53 轉 11:06 僅有 13 分鐘！請前一天在松本就先確認 4 張 Suica/ICOCA 餘額 ≥ ¥1,500（河口湖車資 ¥1,170），完全不用現場排隊買票。",
+          "如果當天長輩步調較慢趕不上 11:06，千萬不要跑！安心等下一班車（約 20–30 分鐘後）即可，行程留有充足彈性。"
+        ],
+        placeIds: ["hub-jr-matsumoto", "hub-otsuki", "hub-kawaguchiko", "hotel-kogetsu"],
+        phraseIds: ["rail-otsuki"],
+        videoKeys: ["yt-otsuki-transfer"]
+      },
+      {
+        id: "stage-6",
+        dayTag: "Day 9 & Day 11",
+        shortPill: "關卡6：新宿脫困＆返台",
+        title: "關卡 6：新宿南口計程車脫困 ＆ 淺草分搭 2 台車轉 Skyliner 赴成田",
+        overview: "避開新宿迷宮轉乘，以及返台日 4 件大行李最舒適的 2 台計程車＋Skyliner 動線。",
+        steps: [
+          "【Day 9 新宿脫困】14:08 河口湖搭「富士迴遊 32 號」，16:06 抵達 JR 新宿站 9/10 號月台。",
+          "下車後認明「新南改札（新南口）」或「南口」電梯標誌搭電梯出站，完全不走地下通道、不轉地鐵！",
+          "因為大行李昨晚已寄去淺草，4 人只背輕便小包，直接在新南口／南口計程車招呼站搭 1 台計程車（約 25–30 分鐘、約 ¥6,000）直達淺草東武飯店門口。",
+          "【Day 11 返台日】08:30 退房時有 4 位長輩＋4 件大行李箱，請飯店櫃台協助叫「2 台標準計程車」（每台 2 人＋2 箱，車資約 ¥1,200／台），6–10 分鐘直達「京成上野站 正面口」。",
+          "進京成上野站搭電梯下至 Skyliner 月台，搭 09:17「Skyliner 123 號」（備案 09:00 或 09:40），09:58 抵成田機場第二航廈 B1，搭電梯直上 3 樓出境大廳報到。"
+        ],
+        alerts: [
+          "🚨 Day 9 為日本天皇誕生日國定假日，富士迴遊 32 號務必於 2027/1/23 台灣時間 09:00 準時搶指定席！",
+          "🚨 Day 11 切勿勉強 4 人＋4 大箱擠 1 台計程車，後車廂絕對放不下；分搭 2 台每人只需多花約台幣 120 元卻超級舒適！"
+        ],
+        placeIds: ["hub-shinjuku-south", "hotel-asakusa", "hub-keisei-ueno", "hub-narita-t2"],
+        phraseIds: ["taxi-two-ueno", "hotel-receive"]
+      }
+    ];
+
+    /* ==========================================================================
+       四、六大場景中日對照溝通字卡
+       ========================================================================== */
+    const PHRASES = [
+      // 1. 計程車接駁
+      {
+        id: "taxi-hotel", cat: "🚕 計程車",
+        title: "請載我們 4 位大人到這間飯店",
+        zh: "您好，我們有 4 位大人，請載我們到這裡（搭配飯店名或地圖）。",
+        jp: "こんにちは。大人4名です。こちらまでお願いします。",
+        reading: "Konnichiwa. Otona yon-mei desu. Kochira made onegai shimasu."
+      },
+      {
+        id: "taxi-flat-snow", cat: "🚕 計程車",
+        title: "雪地安全下車：請停在平坦無結冰處",
+        zh: "車上有長輩，請在沒有積雪結冰、路面平坦的安全處讓我們下車。",
+        jp: "高齢者がいますので、雪や氷のない平坦で安全な場所で降ろしてください。",
+        reading: "こうれいしゃが いますので、ゆきや こおりの ない へいたんで あんぜんな ばしょで おろしてください。"
+      },
+      {
+        id: "taxi-togakushi", cat: "🚕 計程車",
+        title: "戶隱奧社入口：預約 40 分鐘後原地來接",
+        zh: "我們有 4 位大人，請 40 分鐘後再回到這裡（奧社入口）接我們回中社可以嗎？",
+        jp: "大人4名です。40分後にまたここ（奥社入口）へ迎えに来て、中社まで戻っていただけますか？",
+        reading: "おとな 4めいです。40ぷんごに また ここへ むかえに きて いただけますか？"
+      },
+      {
+        id: "taxi-two-ueno", cat: "🚕 計程車",
+        title: "Day 11 淺草飯店：請幫我們叫 2 台計程車去京成上野站",
+        zh: "我們有 4 位大人和 4 件大行李箱，麻煩幫我們叫 2 台計程車前往「京成上野站 正面口」。",
+        jp: "大人4名と大きいスーツケースが4個あります。「京成上野駅 正面口」までタクシーを2台呼んでいただけますか？",
+        reading: "けいせいうえのえき しょうめんぐち まで タクシーを 2だい よんで いただけますか？"
+      },
+
+      // 2. 車站與轉乘
+      {
+        id: "rail-4seats", cat: "🚆 車站轉乘",
+        title: "買 4 張相鄰、靠近大行李架的指定席",
+        zh: "請給我們 4 張大人指定席，希望 4 人座位相鄰、且靠近大型行李放置區。",
+        jp: "大人4名分の指定席をお願いします。4人並びの席で、大きな荷物置き場に近い席を希望します。",
+        reading: "おとな 4めいぶんの していせきを おねがいします。おおきな にもつおきばに ちかい せきを きぼうします。"
+      },
+      {
+        id: "rail-elevator", cat: "🚆 車站轉乘",
+        title: "尋找最近的電梯（避開樓梯與手扶梯）",
+        zh: "我們有長輩同行，爬樓梯非常吃力，請問最近的電梯在哪裡？",
+        jp: "高齢者が一緒ですので階段が大変です。一番近いエレベーターはどこですか？",
+        reading: "こうれいしゃが いっしょですので かいだんが たいへんです。いちばん ちかい エレベーターは どこですか？"
+      },
+      {
+        id: "rail-nagaden", cat: "🚆 車站轉乘",
+        title: "Day 4 買長野電鐵「往湯田中」特急券 4 張",
+        zh: "請給我們 4 張下一班往「湯田中」的長野電鐵乘車券與特急券（我們知道不能刷 IC 卡）。",
+        jp: "次の「湯田中」行き特急の乗車券と特急券を、大人4名分お願いします。",
+        reading: "つぎの ゆだなか ゆき とっきゅうの じょうしゃけんと とっきゅうけんを おとな 4めいぶん おねがいします。"
+      },
+      {
+        id: "rail-otsuki", cat: "🚆 車站轉乘",
+        title: "Day 7 大月站轉乘富士急行線刷 IC 卡確認",
+        zh: "我們要從大月站轉搭富士急行線去河口湖，請問把這張 JR 票交給您、再刷這張 IC 卡進站對嗎？",
+        jp: "河口湖へ乗り換えます。このJRの切符を渡して、交通系ICカードをタッチすればいいですか？",
+        reading: "かわぐちこへ のりかえます。この JRの きっぷを わたして、ICカードを タッチすれば いいですか？"
+      },
+      {
+        id: "rail-senior", cat: "🚆 車站轉乘",
+        title: "詢問 75 歲以上長輩敬老優惠票（美術館・景點）",
+        zh: "我們有 75 歲以上的長輩同行（出示護照），請問有敬老優惠票嗎？",
+        jp: "75歳以上の高齢者がいます（パスポートを提示します）。シニア割引はありますか？",
+        reading: "75さい いじょうの こうれいしゃが います。シニアわりびきは ありますか？"
+      },
+      {
+        id: "air-checkin", cat: "🚆 車站轉乘",
+        title: "Day 11 成田 T2 報到：星宇 JX315（台中行）",
+        zh: "您好，我們要辦理星宇航空 JX315 飛往臺中的報到，共 4 位大人，這是 4 本護照，有 4 件託運行李（含登山杖）。",
+        jp: "スターラックス航空 JX315便（台中行き）のチェックインをお願いします。大人4名です。こちらがパスポートです。",
+        reading: "スターラックスこうくう JX315びん の チェックインを おねがいします。おとな 4めいです。"
+      },
+
+      // 3. 飯店與寄行李
+      {
+        id: "hotel-checkin", cat: "🏨 飯店行李",
+        title: "辦理 4 位大人入住手續",
+        zh: "您好，我們要辦理入住手續，總共 4 位大人，這是 4 位全員的護照。",
+        jp: "チェックインをお願いします。大人4名です。こちらが4人分のパスポートです。",
+        reading: "チェックインを おねがいします。おとな 4めいです。"
+      },
+      {
+        id: "hotel-lowfloor", cat: "🏨 飯店行李",
+        title: "無電梯旅館（金具屋）：請求安排低樓層客房",
+        zh: "長輩膝蓋不方便爬樓梯，如果情況允許，懇請盡量幫我們安排低樓層（1 樓或 2 樓）的客房。",
+        jp: "膝が悪い高齢者がおりますので、可能であれば低い階（1階または2階）のお部屋にしていただけると大変助かります。",
+        reading: "ひざが わるい こうれいしゃが おりますので、ひくい かい（1かい・2かい）の おへやに していただけると たすかります。"
+      },
+      {
+        id: "hotel-kuroneko", cat: "🏨 飯店行李",
+        title: "Day 3 & Day 8：黑貓宅急便寄送 4 件大行李往下一間飯店",
+        zh: "我們想用黑貓宅急便將這 4 件大行李箱寄到下一間飯店，請問可以協助填寫託運單並告知抵達時間嗎？",
+        jp: "ヤマト運輸の宅急便で、このスーツケース4個を次のホテルへ送りたいです。伝票の記入を手伝っていただけますか？",
+        reading: "ヤマトうんゆの たっきゅうびんで、スーツケース 4こを つぎの ホテルへ おくりたいです。"
+      },
+      {
+        id: "hotel-receive", cat: "🏨 飯店行李",
+        title: "Day 5 & Day 9：領取提前寄達的大件行李",
+        zh: "我們前一天用黑貓宅急便寄來的 4 件大行李箱應該已經寄達，請問可以領取嗎？",
+        jp: "事前に宅急便で送ったスーツケース4個が届いているはずですが、受け取れますか？",
+        reading: "じぜんに たっきゅうびんで おくった スーツケース 4こを うけとれますか？"
+      },
+
+      // 4. 餐廳點餐
+      {
+        id: "food-chairs", cat: "🍜 餐廳點餐",
+        title: "請求「有椅子的餐桌座」（不要跪坐榻榻米）",
+        zh: "我們 4 位大人，因長輩膝蓋無法跪坐，請幫我們安排不用脫鞋、有椅子的餐桌座位。",
+        jp: "大人4名です。高齢者がいて正座が難しいため、靴を脱がないテーブル席（椅子席）をお願いします。",
+        reading: "こうれいしゃが いて せいざが むずかしいため、くつを ぬがない テーブルせきを おねがいします。"
+      },
+      {
+        id: "food-hotwater", cat: "🍜 餐廳點餐",
+        title: "請給我們 4 杯熱水或熱茶（不要冰水）",
+        zh: "長輩不喝冰水，請問可以給我們 4 杯熱茶或溫熱白開水嗎？",
+        jp: "氷入りの冷たい水ではなく、温かいお茶か白湯（さゆ）を4ついただけますか？",
+        reading: "つめたい みずではなく、あたたかい おちゃか さゆを 4つ いただけますか？"
+      },
+      {
+        id: "food-soft", cat: "🍜 餐廳點餐",
+        title: "麵條煮軟一點、清淡少鹽、給 4 個分食小碗",
+        zh: "要給長輩吃的，麵條可以幫我們煮軟一點、口味清淡少鹽嗎？並請給我們 4 個分食小碗。",
+        jp: "高齢者が食べますので、麺を柔らかめに茹でて、味付けも薄め（塩分控えめ）にしていただけますか？取り分け用の小皿も4枚ください。",
+        reading: "めんを やわらかめに ゆでて、あじつけも うすめに していただけますか？こざらも 4まい ください。"
+      },
+
+      // 5. 溫泉與購物
+      {
+        id: "onsen-private", cat: "♨️ 溫泉購物",
+        title: "詢問館內溫暖室內浴場與私人包場（貸切風呂）",
+        zh: "請問館內哪一池溫泉溫度比較溫和不會太燙？另外請問有家族可一起使用的貸切風呂嗎？",
+        jp: "館内で一番ぬるめ（熱すぎない）のお風呂はどれですか？また、貸切風呂（家族風呂）は利用できますか？",
+        reading: "かんないで いちばん ぬるめの おふろは どれですか？かしきりぶろは りようできますか？"
+      },
+      {
+        id: "shop-cleats", cat: "♨️ 溫泉購物",
+        title: "藥局・商店尋找防滑冰爪、酸痛貼布、暖暖包",
+        zh: "請問有套在鞋子上的簡易防滑冰爪、膝蓋酸痛貼布，以及貼式暖暖包嗎？",
+        jp: "靴に取り付ける簡易滑り止め（スパイク）、肩や膝用の湿布薬、貼るタイプのカイロはありますか？",
+        reading: "かんい すべりどめ、しっぷやく、はるタイプの カイロは ありますか？"
+      },
+      {
+        id: "shop-taxfree", cat: "♨️ 溫泉購物",
+        title: "辦理免稅（Tax-Free）結帳",
+        zh: "請問這筆購物可以辦理免稅嗎？這是我們的護照。",
+        jp: "免税（タックスフリー）でお願いできますか？こちらがパスポートです。",
+        reading: "めんぜい（タックスフリー）で おねがいできますか？"
+      },
+
+      // 6. 緊急醫療求助
+      {
+        id: "med-dizzy", cat: "🏥 緊急醫療",
+        title: "【緊急保命】長輩頭暈不適，請提供休息處並叫中文協助／救護車",
+        zh: "不好意思！同行的長輩突然頭暈身體不舒服，請讓我們坐下躺著休息，必要時請協助呼叫 119 救護車或中文翻譯！",
+        jp: "【緊急】同行の高齢者がめまいと体調不良を訴えています。座って休める場所と、必要であれば救急車（119番）または中国語対応をお願いします！",
+        reading: "こうれいしゃの ぐあいが わるくなりました。やすめる ばしょと きゅうきゅうしゃ（119）を おねがいします！"
+      },
+      {
+        id: "med-slip", cat: "🏥 緊急醫療",
+        title: "雪地滑倒撞到膝蓋／腳踝，需要冰敷袋",
+        zh: "長輩剛才在雪地滑倒撞到膝蓋（或腳踝），非常痛，請問可以借我們冰敷袋嗎？",
+        jp: "高齢者が雪道で滑って膝（または足首）を強く打ちました。冷やすための氷嚢（アイスパック）を貸していただけますか？",
+        reading: "ゆきみちで すべって ひざを うちました。ひやすための アイスパックを かしていただけますか？"
+      },
+      {
+        id: "med-chronic", cat: "🏥 緊急醫療",
+        title: "告知醫護人員：長輩平時有服用慢性病藥（請看藥袋）",
+        zh: "長輩平時有服用高血壓（或心臟病／糖尿病）處方藥，這張是英文藥品清單／處方箋，煩請中文翻譯協助。",
+        jp: "普段から高血圧（または心臓病・糖尿病）の処方薬を飲んでいます。こちらがお薬のリストです。中国語の通訳をお願いできますか？",
+        reading: "ふだんから こうけつあつの くすりを のんでいます。ちゅうごくごの つうやくを おねがいできますか？"
+      }
+    ];
+
+    /* ==========================================================================
+       五、互動打包清單資料
+       ========================================================================== */
+    const PACKING_GROUPS = [
+      {
+        id: "pack-snow",
+        title: "🧣 保暖防滑穿搭（2 月深冬賞雪核心）",
+        badge: "防寒防滑",
+        badgeCls: "badge-green",
+        items: [
+          { id: "p-cleats", text: "【必帶防滑神物】簡易套鞋式冰爪 × 4 雙（長野表參道、戶隱、雪猴黑冰必備！）" },
+          { id: "p-boots", text: "防水防滑雪靴（鞋底刻紋深、保暖好穿脫）＋ 備用防滑運動鞋" },
+          { id: "p-coat", text: "防風防水外套 1 件 ＋ 羽絨外套 1 件 ＋ 羽絨背心 1 件（洋蔥式穿法進暖氣房好脫）" },
+          { id: "p-heattech", text: "發熱衣、發熱褲各 3 套 ＋ 冬衣褲（穿 1 帶 5）" },
+          { id: "p-socks", text: "冬襪含厚毛襪（穿 1 帶 7）＋ 一次性內褲（穿 1 帶 9）" },
+          { id: "p-hat", text: "遮耳毛帽 × 2、圍脖、保暖口罩（防冷空氣吸進氣管咳嗽）" },
+          { id: "p-gloves", text: "防水保暖手套 × 2 雙 ＋ 薄絨手套（雙手不插口袋維持平衡）" },
+          { id: "p-warmers", text: "貼式暖暖包 ＋ 手握暖暖包（切勿直接貼皮膚防低溫燙傷）" }
+        ],
+        note: "💡 已主動幫長輩刪除「泳衣褲」（日本溫泉皆為男女分開裸湯）與「相機三腳架」（無極光且日本寺社美術館多禁止使用腳架），減輕行李重量！"
+      },
+      {
+        id: "pack-flight",
+        title: "✈️ 飛航安全特別分類（務必嚴格遵守）",
+        badge: "飛安紅線",
+        badgeCls: "badge-solid-red",
+        items: [
+          { id: "p-poles", text: "【務必託運】折疊登山杖 × 4 支（加裝雪地橡膠頭，嚴禁隨身帶上飛機！）" },
+          { id: "p-powerbank", text: "【務必隨身登機】行動電源 × 3 個 ＋ 備用鋰電池（嚴禁放入託運行李箱！）" },
+          { id: "p-liquids", text: "【務必託運】高保濕乳液、凡士林、酸痛藥膏（超過 100ml 液體膏狀放託運）" },
+          { id: "p-umbrella", text: "折疊雨傘 × 2（雪雨兼用）、電子行李秤、折疊購物袋" }
+        ]
+      },
+      {
+        id: "pack-meds",
+        title: "💊 長輩隨身常備藥與慢性病藥（放隨身包）",
+        badge: "健康必備",
+        badgeCls: "badge-amber",
+        items: [
+          { id: "p-chronic", text: "【最重要】個人慢性病處方藥（務必隨身登機＋多備 3 天份，並附原廠藥袋／英文診斷證明）" },
+          { id: "p-commonmed", text: "感冒藥、腸胃藥、止痛藥、暈車藥、尿道炎備用藥、消化酵素、綜合維他命" },
+          { id: "p-oint", text: "護唇膏、凡士林（日本冬季暖氣房極乾防鼻血乾裂）、OK 繃、百靈油、曼秀雷敦" },
+          { id: "p-towel", text: "隨身小毛巾 × 4（Day 6 上諏訪車站月台泡足湯擦腳必備！）" }
+        ]
+      },
+      {
+        id: "pack-docs",
+        title: "🛂 證件、上網與日本採買清單",
+        badge: "證件採買",
+        badgeCls: "badge-blue",
+        items: [
+          { id: "p-flight", text: "【星宇機票 JX314/JX315】確認 4 人電子機票與訂位代號，並於起飛前 48 小時網路報到（去程 2/13 09:15、回程 2/23 14:25）" },
+          { id: "p-passport", text: "護照正本（效期 6 個月以上、75歲敬老票與退稅必備）、身分證、日幣現金、信用卡" },
+          { id: "p-ic", text: "交通 IC 卡（Suica / ICOCA，請預先確認儲值，Day 7 大月站轉乘秒過閘）" },
+          { id: "p-esim", text: "日本上網 eSIM / SIM 卡、充電器、多孔插頭、太陽眼鏡（防雪盲反光）、備用眼鏡" },
+          { id: "p-thermos", text: "輕量保溫瓶 × 2（隨時裝熱茶熱水暖身）" },
+          { id: "p-buy", text: "【日本採買清單】梅片、胃藥、大正感冒藥、合利他命、干貝粒、發熱衣" }
+        ]
+      }
+    ];
+
+    /* ==========================================================================
+       六、全域狀態、索引快取與 LocalStorage 持久化管理
+       ========================================================================== */
+    const PHRASES_BY_ID = Object.fromEntries(PHRASES.map((p) => [p.id, p]));
+    const ALL_PLACES = Object.values(PLACES_DB);
+
+    const LS_KEYS = {
+      font: "nagano_2027_v2_fontsize",
+      pack: "nagano_2027_v2_packing",
+      ui: "nagano_2027_v3_ui"
+    };
+
+    const state = {
+      fontSize: 20,
+      activeTab: "itinerary",
+      activeDay: 1,
+      activeMapCat: "all",
+      mapQuery: "",
+      activeSubTab: "phrases",
+      activePhraseCat: "全部",
+      openStages: { "stage-1": true },
+      modalDark: true,
+      packing: {},
+      currentModalCopyText: "",
+      currentModalSpeakText: "",
+      lastTriggerEl: null
+    };
+
+    function loadStorage() {
+      try {
+        const savedFont = localStorage.getItem(LS_KEYS.font);
+        if (savedFont && [16, 20, 24].includes(Number(savedFont))) {
+          state.fontSize = Number(savedFont);
+        }
+        const savedPack = localStorage.getItem(LS_KEYS.pack);
+        if (savedPack) {
+          state.packing = JSON.parse(savedPack) || {};
+        }
+        const savedUi = localStorage.getItem(LS_KEYS.ui);
+        if (savedUi) {
+          const ui = JSON.parse(savedUi);
+          if (ui && typeof ui === "object") {
+            if (ui.activeDay >= 1 && ui.activeDay <= ITINERARY_DAYS.length) {
+              state.activeDay = ui.activeDay;
+            }
+            if (["itinerary", "transit", "maps", "hotels", "tools"].includes(ui.activeTab)) {
+              state.activeTab = ui.activeTab;
+            }
+            if (["phrases", "packing", "safety"].includes(ui.activeSubTab)) {
+              state.activeSubTab = ui.activeSubTab;
+            }
+            if (typeof ui.modalDark === "boolean") {
+              state.modalDark = ui.modalDark;
+            }
+          }
+        }
+      } catch (err) {
+        // 忽略隱私瀏覽模式儲存限制
+      }
+    }
+
+    function saveStorage() {
+      try {
+        localStorage.setItem(LS_KEYS.font, String(state.fontSize));
+        localStorage.setItem(LS_KEYS.pack, JSON.stringify(state.packing));
+        localStorage.setItem(
+          LS_KEYS.ui,
+          JSON.stringify({
+            activeDay: state.activeDay,
+            activeTab: state.activeTab,
+            activeSubTab: state.activeSubTab,
+            modalDark: state.modalDark
+          })
+        );
+      } catch (err) {}
+    }
+
+    /* ==========================================================================
+       七、工具函式：Google Maps 連結、HTML 安全跳脫、Toast 與動態 Header 高度
+       ========================================================================== */
+    function getMapUrl(query) {
+      return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(query);
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    let toastTimer = null;
+    function showToast(msg) {
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove("show"), 2200);
+    }
+
+    function syncHeaderHeight() {
+      const header = document.getElementById("sticky-header");
+      if (!header) return;
+      const h = Math.ceil(header.getBoundingClientRect().height);
+      if (h > 0) {
+        document.documentElement.style.setProperty("--header-h", h + "px");
+      }
+    }
+
+    function centerPillHorizontally(container, pillEl) {
+      if (!container || !pillEl) return;
+      const targetLeft =
+        pillEl.offsetLeft - container.clientWidth / 2 + pillEl.clientWidth / 2;
+      container.scrollTo({
+        left: Math.max(0, targetLeft),
+        behavior: "smooth"
+      });
+    }
+
+    /* 若使用者於 2027/2/15–2/25 旅途中開啟，顯示一鍵跳至「今日行程」提示 */
+    function detectTodayBanner() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, "0");
+      const d = String(now.getDate()).padStart(2, "0");
+      const todayIso = `${y}-${m}-${d}`;
+      const match = ITINERARY_DAYS.find((item) => item.isoDate === todayIso);
+      const banner = document.getElementById("today-jump-banner");
+      if (match && banner) {
+        banner.innerHTML = `
+          <span>📍 今天是 <strong>Day ${match.day}（${escapeHtml(match.date)}）</strong></span>
+          <button type="button" class="btn btn-amber" style="min-height: 36px; padding: 4px 12px; font-size: 0.78rem;" data-day="${match.day}">
+            跳至今日
+          </button>
+        `;
+        banner.classList.remove("hidden");
+      }
+    }
+
+    /* ==========================================================================
+       八、頂部字體大小即時調整（CSS Root Variable --base-font）
+       ========================================================================== */
+    function setFontSize(size) {
+      const validSize = [16, 20, 24].includes(Number(size)) ? Number(size) : 20;
+      state.fontSize = validSize;
+      document.documentElement.style.setProperty("--base-font", validSize + "px");
+      saveStorage();
+
+      document.querySelectorAll(".font-btn").forEach((btn) => {
+        const active = Number(btn.dataset.font) === validSize;
+        btn.classList.toggle("active", active);
+        btn.setAttribute("aria-pressed", String(active));
+      });
+      syncHeaderHeight();
+    }
+
+    /* ==========================================================================
+       九、底部五大分頁切換與跨頁跳轉
+       ========================================================================== */
+    function switchTab(tabId, skipScrollTop) {
+      state.activeTab = tabId;
+      saveStorage();
+
+      document.querySelectorAll(".tab-panel").forEach((panel) => {
+        panel.classList.toggle("hidden", panel.id !== "tab-" + tabId);
+      });
+      document.querySelectorAll(".nav-item").forEach((btn) => {
+        const active = btn.dataset.tab === tabId;
+        btn.classList.toggle("active", active);
+        if (active) {
+          btn.setAttribute("aria-current", "page");
+        } else {
+          btn.removeAttribute("aria-current");
+        }
+      });
+      if (!skipScrollTop) {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    }
+
+    function jumpToTransitStage(stageId) {
+      state.openStages[stageId] = true;
+      renderTransitQuickPills();
+      renderTransitStages();
+      switchTab("transit", true);
+      requestAnimationFrame(() => {
+        const el = document.getElementById(stageId);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      });
+    }
+
+    /* ==========================================================================
+       十、渲染分頁 1：每日行程
+       ========================================================================== */
+    function renderDayPills() {
+      const container = document.getElementById("day-pills");
+      container.innerHTML = ITINERARY_DAYS.map((d) => {
+        const isActive = d.day === state.activeDay;
+        return `<button type="button" role="tab" aria-selected="${isActive}" class="pill-btn ${isActive ? "active" : ""}" data-day="${d.day}">${escapeHtml(d.pill)}</button>`;
+      }).join("");
+    }
+
+    function selectDay(dayNum, skipScrollTop) {
+      if (dayNum < 1 || dayNum > ITINERARY_DAYS.length) return;
+      state.activeDay = dayNum;
+      saveStorage();
+      renderDayPills();
+      renderActiveDayContent();
+
+      const pillContainer = document.getElementById("day-pills");
+      const activePill = pillContainer.querySelector(".pill-btn.active");
+      centerPillHorizontally(pillContainer, activePill);
+
+      if (!skipScrollTop) {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    }
+
+    function renderVideoCardHtml(videoKey) {
+      const v = VIDEOS_DB[videoKey];
+      if (!v) return "";
+      const thumbUrl = `https://i.ytimg.com/vi/${encodeURIComponent(v.id)}/hqdefault.jpg`;
+      const isLocalFile = window.location.protocol === "file:";
+      return `
+        <div class="video-card" data-video-box="${escapeHtml(v.id)}">
+          <div class="video-card-head">
+            <span class="badge badge-solid-red">${escapeHtml(v.tag)}</span>
+            <span class="badge badge-blue">頻道：${escapeHtml(v.channel)}</span>
+          </div>
+          <p class="video-card-title">${escapeHtml(v.title)}</p>
+          <div class="video-frame-wrap">
+            <button type="button" class="video-thumb-btn" data-play-yt="${escapeHtml(v.id)}" aria-label="播放影片：${escapeHtml(v.title)}">
+              <img class="video-thumb-img" src="${thumbUrl}" alt="${escapeHtml(v.title)}" loading="lazy" onerror="this.style.display='none'" />
+              <span class="video-play-overlay">
+                <span class="video-play-icon" aria-hidden="true">▶</span>
+                <span class="video-play-hint">點擊載入影片播放</span>
+              </span>
+            </button>
+          </div>
+          <p style="margin: 0 0 8px 0; font-size: 0.82rem; color: var(--text-sub); line-height: 1.45;">
+            ${escapeHtml(v.note)}
+          </p>
+          <div class="spot-actions" style="margin-top: 0;">
+            <button type="button" class="spot-btn spot-btn-driver" data-play-yt="${escapeHtml(v.id)}">
+              ▶ 網頁內播放
+            </button>
+            <a class="spot-btn spot-btn-yt" href="${escapeHtml(v.url)}" target="_blank" rel="noopener noreferrer">
+              📺 在 YouTube 開啟
+            </a>
+          </div>
+          ${
+            isLocalFile
+              ? `<p class="video-file-note">💡 若單檔直接開啟時無法內嵌播放，請點右側「在 YouTube 開啟」直接觀看。</p>`
+              : ""
+          }
+        </div>
+      `;
+    }
+
+    function renderActiveDayContent() {
+      const dayObj = ITINERARY_DAYS.find((d) => d.day === state.activeDay) || ITINERARY_DAYS[0];
+      document.getElementById("day-progress-label").textContent =
+        `目前閱讀：第 ${dayObj.day} / ${ITINERARY_DAYS.length} 天`;
+
+      const isFirst = dayObj.day === 1;
+      const isLast = dayObj.day === ITINERARY_DAYS.length;
+      ["btn-prev-day", "btn-prev-day-bottom"].forEach((id) => {
+        const btn = document.getElementById(id);
+        btn.disabled = isFirst;
+        btn.textContent = isFirst ? "← 已是第 1 天" : `← Day ${dayObj.day - 1}`;
+      });
+      ["btn-next-day", "btn-next-day-bottom"].forEach((id) => {
+        const btn = document.getElementById(id);
+        btn.disabled = isLast;
+        btn.textContent = isLast ? "已是最終日 →" : `Day ${dayObj.day + 1} →`;
+      });
+
+      const badgesHtml = dayObj.badges
+        .map((b) => `<span class="badge ${b.cls}">${escapeHtml(b.text)}</span>`)
+        .join("");
+
+      const transitJumpHtml = dayObj.transitStageId
+        ? `<div style="margin-bottom: 14px;">
+             <button type="button" class="btn btn-transit btn-full" data-jump-stage="${dayObj.transitStageId}">
+               ${escapeHtml(dayObj.transitBtnLabel)}
+             </button>
+           </div>`
+        : "";
+
+      const dayFlightHtml =
+        dayObj.flightLegId && FLIGHT_BOOKING.legs[dayObj.flightLegId]
+          ? renderDayFlightBanner(FLIGHT_BOOKING.legs[dayObj.flightLegId])
+          : "";
+
+      const timelineHtml = dayObj.timeline
+        .map((item) => {
+          const place = item.placeId ? PLACES_DB[item.placeId] : null;
+          const extraPlace = item.extraPlaceId ? PLACES_DB[item.extraPlaceId] : null;
+          const styleCls =
+            item.styleType === "important"
+              ? "is-important"
+              : item.styleType === "warning"
+              ? "is-warning"
+              : "";
+
+          const descHtml = escapeHtml(item.desc).replace(/\n/g, "<br>");
+
+          let actionsHtml = "";
+          if (place) {
+            actionsHtml += `
+              <div class="spot-actions">
+                <a class="spot-btn spot-btn-map" href="${getMapUrl(place.query)}" target="_blank" rel="noopener noreferrer">
+                  📍 開啟 Google 地圖${extraPlace ? "（" + escapeHtml(place.zh.slice(0, 4)) + "）" : ""}
+                </a>
+                <button type="button" class="spot-btn spot-btn-driver" data-place="${place.id}">
+                  🗣️ 給司機看
+                </button>
+              </div>
+            `;
+          }
+          if (extraPlace) {
+            actionsHtml += `
+              <div class="spot-actions" style="margin-top: 6px;">
+                <a class="spot-btn spot-btn-map" href="${getMapUrl(extraPlace.query)}" target="_blank" rel="noopener noreferrer">
+                  📍 地圖：${escapeHtml(extraPlace.zh)}
+                </a>
+                <button type="button" class="spot-btn spot-btn-driver" data-place="${extraPlace.id}">
+                  🗣️ 給司機看
+                </button>
+              </div>
+            `;
+          }
+          if (item.phraseId && PHRASES_BY_ID[item.phraseId]) {
+            actionsHtml += `
+              <div class="spot-actions" style="margin-top: 6px;">
+                <button type="button" class="spot-btn spot-btn-phrase" data-phrase="${item.phraseId}">
+                  ${escapeHtml(item.phraseLabel || "🗣️ 開啟情境日文字卡")}
+                </button>
+              </div>
+            `;
+          }
+          const videoHtml = item.videoKey ? renderVideoCardHtml(item.videoKey) : "";
+
+          return `
+            <div class="timeline-item ${styleCls}">
+              <span class="timeline-time">${escapeHtml(item.time)}</span>
+              <h3 class="timeline-title">${escapeHtml(item.title)}</h3>
+              <p class="timeline-desc">${descHtml}</p>
+              ${actionsHtml}
+              ${videoHtml}
+            </div>
+          `;
+        })
+        .join("");
+
+      document.getElementById("itinerary-content").innerHTML = `
+        <article class="card">
+          <div class="day-header-box">
+            <div class="day-date-line">
+              <span class="day-num-chip">Day ${dayObj.day}</span>
+              <span class="day-date-text">${escapeHtml(dayObj.date)}</span>
+            </div>
+            <h2 class="day-title">${escapeHtml(dayObj.title)}</h2>
+            <div class="badge-row" style="margin-top: 10px; margin-bottom: 0;">
+              ${badgesHtml}
+            </div>
+          </div>
+
+          ${dayFlightHtml}
+
+          ${transitJumpHtml}
+
+          <div class="timeline-list">
+            ${timelineHtml}
+          </div>
+
+          <div class="tip-box">
+            <h4 class="tip-box-title">💡 本日長輩貼心叮嚀</h4>
+            <p>${escapeHtml(dayObj.tip)}</p>
+          </div>
+        </article>
+      `;
+    }
+
+    /* ==========================================================================
+       十一、渲染分頁 2：6 大複雜交通關卡
+       ========================================================================== */
+    function renderTransitQuickPills() {
+      const container = document.getElementById("transit-quick-pills");
+      container.innerHTML = TRANSIT_STAGES.map(
+        (st) =>
+          `<button type="button" class="pill-btn ${state.openStages[st.id] ? "active" : ""}" data-jump-stage="${st.id}">${escapeHtml(st.shortPill)}</button>`
+      ).join("");
+    }
+
+    function toggleTransitStage(stageId) {
+      state.openStages[stageId] = !state.openStages[stageId];
+      renderTransitQuickPills();
+      renderTransitStages();
+    }
+
+    function renderTransitStages() {
+      const container = document.getElementById("transit-stages-container");
+      container.innerHTML = TRANSIT_STAGES.map((st) => {
+        const isOpen = !!state.openStages[st.id];
+        const stepsHtml = st.steps
+          .map(
+            (text, idx) => `
+              <li class="step-item">
+                <span class="step-badge">Step ${idx + 1}</span>
+                <p class="step-text">${escapeHtml(text)}</p>
+              </li>
+            `
+          )
+          .join("");
+
+        const alertsHtml = st.alerts
+          .map((a) => `<li style="margin-bottom: 5px;">${escapeHtml(a)}</li>`)
+          .join("");
+
+        const mapsHtml = st.placeIds
+          .map((pid) => {
+            const p = PLACES_DB[pid];
+            if (!p) return "";
+            return `
+              <a class="spot-btn spot-btn-map" href="${getMapUrl(p.query)}" target="_blank" rel="noopener noreferrer">
+                📍 ${escapeHtml(p.zh)}
+              </a>
+            `;
+          })
+          .join("");
+
+        const phrasesHtml = (st.phraseIds || [])
+          .map((phId) => {
+            const ph = PHRASES_BY_ID[phId];
+            if (!ph) return "";
+            return `
+              <button type="button" class="spot-btn spot-btn-phrase" data-phrase="${ph.id}">
+                🗣️ 字卡：${escapeHtml(ph.title)}
+              </button>
+            `;
+          })
+          .join("");
+
+        const videosHtml = (st.videoKeys || [])
+          .map((vk) => renderVideoCardHtml(vk))
+          .join("");
+
+        return `
+          <article id="${st.id}" class="stage-card ${isOpen ? "is-open" : ""}">
+            <button type="button" class="stage-header-btn" aria-expanded="${isOpen}" data-toggle-stage="${st.id}">
+              <div>
+                <span class="badge badge-blue" style="margin-bottom: 4px;">${escapeHtml(st.dayTag)}</span>
+                <h3 class="stage-title">${escapeHtml(st.title)}</h3>
+                <p class="stage-summary">${escapeHtml(st.overview)}</p>
+              </div>
+              <span class="stage-chevron" aria-hidden="true">▼</span>
+            </button>
+
+            <div class="stage-body">
+              <ol class="step-list">
+                ${stepsHtml}
+              </ol>
+
+              <div class="alert-box">
+                <h4 class="alert-box-title">🚨 長輩避雷提醒</h4>
+                <ul style="margin: 0; padding-left: 18px;">
+                  ${alertsHtml}
+                </ul>
+              </div>
+
+              ${
+                phrasesHtml
+                  ? `<div style="margin-top: 12px;">
+                       <div style="font-size: 0.85rem; font-weight: 800; color: var(--amber-gold); margin-bottom: 6px;">🗣️ 本關卡實用溝通字卡：</div>
+                       <div class="spot-actions" style="margin-top: 0;">${phrasesHtml}</div>
+                     </div>`
+                  : ""
+              }
+
+              ${
+                videosHtml
+                  ? `<div style="margin-top: 12px;">
+                       <div style="font-size: 0.85rem; font-weight: 800; color: #9B1C1C; margin-bottom: 4px;">🎬 本關卡實景帶路教學影片：</div>
+                       ${videosHtml}
+                     </div>`
+                  : ""
+              }
+
+              <div style="margin-top: 12px;">
+                <div style="font-size: 0.85rem; font-weight: 800; color: var(--map-green); margin-bottom: 6px;">📍 本關卡車站／地點地圖快開：</div>
+                <div class="spot-actions" style="margin-top: 0;">
+                  ${mapsHtml}
+                </div>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    /* ==========================================================================
+       十二、渲染分頁 3：重要地點地圖總覽（動態總數＋即時關鍵字搜尋）
+       ========================================================================== */
+    function renderMapFilters() {
+      const countCat = (c) => ALL_PLACES.filter((p) => p.cat === c).length;
+      document.getElementById("maps-count-tag").textContent =
+        `${ALL_PLACES.length} 個精準地點・一鍵喚起 Google Maps`;
+
+      const cats = [
+        { key: "all", label: `全部 (${ALL_PLACES.length})` },
+        { key: "hotel", label: `🏨 住宿飯店 (${countCat("hotel")})` },
+        { key: "hub", label: `🚆 交通樞紐 (${countCat("hub")})` },
+        { key: "spot", label: `⛩️ 重要景點 (${countCat("spot")})` },
+        { key: "food", label: `🍜 推薦美食 (${countCat("food")})` }
+      ];
+
+      document.getElementById("map-filter-pills").innerHTML = cats
+        .map(
+          (c) =>
+            `<button type="button" class="pill-btn ${state.activeMapCat === c.key ? "active" : ""}" data-map-cat="${c.key}">${c.label}</button>`
+        )
+        .join("");
+    }
+
+    function renderMapPlaces() {
+      const q = state.mapQuery.trim().toLowerCase();
+      let list =
+        state.activeMapCat === "all"
+          ? ALL_PLACES
+          : ALL_PLACES.filter((p) => p.cat === state.activeMapCat);
+
+      if (q) {
+        list = list.filter((p) =>
+          [p.zh, p.jp, p.kana, p.days, p.note, p.addressZh, p.addressJp]
+            .filter(Boolean)
+            .some((field) => field.toLowerCase().includes(q))
+        );
+      }
+
+      const catBadgeMap = {
+        hotel: { text: "🏨 住宿飯店", cls: "badge-amber" },
+        hub: { text: "🚆 交通樞紐", cls: "badge-blue" },
+        spot: { text: "⛩️ 重要景點", cls: "badge-green" },
+        food: { text: "🍜 推薦美食", cls: "badge-red" }
+      };
+
+      const container = document.getElementById("map-places-container");
+      if (list.length === 0) {
+        container.innerHTML = `
+          <div class="card" style="text-align: center; padding: 26px 16px;">
+            <p style="margin: 0 0 10px 0; font-weight: 800; color: var(--text-sub);">找不到符合「${escapeHtml(state.mapQuery)}」的地點</p>
+            <button type="button" class="btn btn-soft" id="btn-clear-map-empty">顯示全部地點</button>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = list
+        .map((p) => {
+          const cb = catBadgeMap[p.cat] || { text: "地點", cls: "badge-blue" };
+          return `
+            <article class="card">
+              <div class="badge-row" style="margin-bottom: 6px;">
+                <span class="badge ${cb.cls}">${cb.text}</span>
+                <span class="badge badge-blue">${escapeHtml(p.days)}</span>
+              </div>
+              <h3 style="margin: 0; font-size: 1.08rem; font-weight: 900; color: var(--text-main);">${escapeHtml(p.zh)}</h3>
+              <div class="place-card-jp" lang="ja">${escapeHtml(p.jp)}</div>
+              <p class="place-card-note">${escapeHtml(p.note)}</p>
+              <div class="btn-group">
+                <a class="btn btn-map btn-flex" href="${getMapUrl(p.query)}" target="_blank" rel="noopener noreferrer">
+                  📍 開啟 Google 地圖
+                </a>
+                <button type="button" class="btn btn-driver btn-flex" data-place="${p.id}">
+                  🗣️ 給司機看
+                </button>
+              </div>
+            </article>
+          `;
+        })
+        .join("");
+    }
+
+    /* ==========================================================================
+       十三、渲染分頁 4：星宇航空電子機票卡 ＆ 5 間精選飯店卡片
+       ========================================================================== */
+    function renderFlightLegHtml(leg) {
+      return `
+        <div class="flight-leg">
+          <div class="flight-leg-top">
+            <span class="badge badge-solid-blue">✈️ ${escapeHtml(leg.flightNo)}・${escapeHtml(leg.label)}</span>
+            <span class="badge badge-amber">${escapeHtml(leg.date)}</span>
+          </div>
+          <div class="flight-route-grid">
+            <div class="flight-point">
+              <div class="flight-time-big">${escapeHtml(leg.depTime)}</div>
+              <div class="flight-iata">${escapeHtml(leg.depCode)} ${escapeHtml(leg.depCity)}</div>
+              <div class="flight-terminal">${escapeHtml(leg.depAirport)}</div>
+            </div>
+            <div class="flight-mid">
+              <div class="flight-arrow-line">✈ ───▶</div>
+              <div class="flight-duration">${escapeHtml(leg.duration)}</div>
+            </div>
+            <div class="flight-point is-end">
+              <div class="flight-time-big">${escapeHtml(leg.arrTime)}</div>
+              <div class="flight-iata">${escapeHtml(leg.arrCode)} ${escapeHtml(leg.arrCity)}</div>
+              <div class="flight-terminal">${escapeHtml(leg.arrAirport)}</div>
+            </div>
+          </div>
+          <div class="flight-leg-foot">
+            <span>✅ ${escapeHtml(FLIGHT_BOOKING.cabin)}・${escapeHtml(FLIGHT_BOOKING.status)}</span>
+            <span style="color: var(--text-sub); font-weight: 700;">${escapeHtml(FLIGHT_BOOKING.airlineEn)}</span>
+          </div>
+          <p style="margin: 8px 0 0 0; font-size: 0.82rem; color: var(--text-sub); line-height: 1.5;">
+            💡 ${escapeHtml(leg.checkinTip)}
+          </p>
+        </div>
+      `;
+    }
+
+    function renderDayFlightBanner(leg) {
+      return `
+        <div class="day-flight-banner">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+            <div>
+              <div style="font-size: 0.78rem; color: #D7E9F2; font-weight: 700;">✈️ 本日星宇航空電子機票（${escapeHtml(FLIGHT_BOOKING.status)}）</div>
+              <div style="display: flex; align-items: baseline; gap: 8px; margin-top: 2px;">
+                <span style="font-size: 0.82rem; color: #FDE68A; font-weight: 700;">星宇直飛班號</span>
+                <span class="flight-pnr-code">${escapeHtml(leg.flightNo)}</span>
+              </div>
+            </div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <button type="button" class="btn btn-amber" style="min-height: 40px; padding: 6px 11px; font-size: 0.78rem;" data-pnr-modal="${leg.id}">
+                🔍 放大班機
+              </button>
+              
+            </div>
+          </div>
+          ${renderFlightLegHtml(leg)}
+        </div>
+      `;
+    }
+
+    function renderFlightPassCard() {
+      const container = document.getElementById("flight-pass-container");
+      if (!container) return;
+      container.innerHTML = `
+        <article class="flight-pass-card">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+            <div>
+              <span class="badge" style="background-color: rgba(246, 196, 83, 0.2); color: #FDE68A; border: 1px solid #F6C453;">
+                ✈️ ${escapeHtml(FLIGHT_BOOKING.airlineZh)} ${escapeHtml(FLIGHT_BOOKING.airlineEn)}
+              </span>
+              <h3 style="margin: 6px 0 0 0; font-size: 1.12rem; font-weight: 900; color: #FFFFFF;">
+                往返機票與登機航廈資訊
+              </h3>
+            </div>
+          </div>
+
+          <div class="flight-pnr-bar">
+            <div>
+              <div style="font-size: 0.78rem; color: #D7E9F2; font-weight: 700;">往返班號（經濟艙・機位確認）</div>
+              <div class="flight-pnr-code">JX314 / JX315</div>
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button type="button" class="btn btn-amber" style="min-height: 42px; padding: 6px 12px; font-size: 0.82rem;" data-pnr-modal="all">
+                🔍 滿版放大給地勤看
+              </button>
+            </div>
+          </div>
+
+          ${renderFlightLegHtml(FLIGHT_BOOKING.legs.outbound)}
+          ${renderFlightLegHtml(FLIGHT_BOOKING.legs.inbound)}
+
+          <div class="btn-group" style="margin-top: 12px;">
+            <button type="button" class="btn btn-amber btn-full" data-phrase="air-checkin">
+              🗣️ 放大「成田 T2 星宇 JX315 報到」日文給地勤看
+            </button>
+          </div>
+        </article>
+      `;
+    }
+
+    function renderHotelsTab() {
+      const hotelIds = [
+        "hotel-nagano",
+        "hotel-kanaguya",
+        "hotel-matsumoto",
+        "hotel-kogetsu",
+        "hotel-asakusa"
+      ];
+
+      document.getElementById("hotels-container").innerHTML = hotelIds
+        .map((id) => {
+          const h = PLACES_DB[id];
+          const isKanaguya = id === "hotel-kanaguya";
+          return `
+            <article class="card" style="${isKanaguya ? "border-color: var(--amber-gold);" : ""}">
+              <div class="badge-row" style="margin-bottom: 6px;">
+                <span class="badge badge-solid-blue">${escapeHtml(h.days)}</span>
+                <span class="badge badge-amber">${escapeHtml(h.nights)}</span>
+              </div>
+              <h4 style="margin: 0; font-size: 1.12rem; font-weight: 900; color: var(--text-main);">${escapeHtml(h.zh)}</h4>
+              <div class="place-card-jp" lang="ja">${escapeHtml(h.jp)}</div>
+
+              <div class="hotel-meta">
+                <div><strong>中文地址：</strong>${escapeHtml(h.addressZh)}</div>
+                <div style="margin-top: 3px;" lang="ja"><strong>日文地址：</strong>${escapeHtml(h.addressJp)}</div>
+              </div>
+
+              <p class="place-card-note" style="color: var(--text-main);">
+                <strong>長輩備註：</strong>${escapeHtml(h.note)}
+              </p>
+
+              <div class="btn-group">
+                <a class="btn btn-map btn-flex" href="${getMapUrl(h.query)}" target="_blank" rel="noopener noreferrer">
+                  📍 開啟地圖
+                </a>
+                <button type="button" class="btn btn-driver btn-flex" data-place="${h.id}">
+                  🗣️ 給司機看飯店名
+                </button>
+              </div>
+            </article>
+          `;
+        })
+        .join("");
+    }
+
+    /* ==========================================================================
+       十四、渲染分頁 5：子分頁（溝通字卡 / 互動打包 / 安全急難）
+       ========================================================================== */
+    function switchSubTab(subId) {
+      state.activeSubTab = subId;
+      saveStorage();
+
+      document.querySelectorAll(".subtab-btn").forEach((btn) => {
+        const active = btn.dataset.subtab === subId;
+        btn.classList.toggle("active", active);
+        btn.setAttribute("aria-selected", String(active));
+      });
+      ["phrases", "packing", "safety"].forEach((id) => {
+        document.getElementById("subtab-" + id).classList.toggle("hidden", id !== subId);
+      });
+    }
+
+    function renderPhraseFilters() {
+      const cats = ["全部", "🚕 計程車", "🚆 車站轉乘", "🏨 飯店行李", "🍜 餐廳點餐", "♨️ 溫泉購物", "🏥 緊急醫療"];
+      document.getElementById("phrase-filter-pills").innerHTML = cats
+        .map(
+          (c) =>
+            `<button type="button" class="pill-btn ${state.activePhraseCat === c ? "active" : ""}" data-phrase-cat="${escapeHtml(c)}">${escapeHtml(c)}</button>`
+        )
+        .join("");
+    }
+
+    function renderPhrases() {
+      const list =
+        state.activePhraseCat === "全部"
+          ? PHRASES
+          : PHRASES.filter((p) => p.cat === state.activePhraseCat);
+
+      document.getElementById("phrases-container").innerHTML = list
+        .map((p) => {
+          const isEmergency = p.cat === "🏥 緊急醫療";
+          return `
+            <article class="card" style="${isEmergency ? "border-color: var(--alert-red); background-color: var(--alert-red-soft);" : ""}">
+              <div class="badge-row" style="margin-bottom: 6px;">
+                <span class="badge ${isEmergency ? "badge-solid-red" : "badge-blue"}">${escapeHtml(p.cat)}</span>
+              </div>
+              <h3 style="margin: 0 0 4px 0; font-size: 1.02rem; font-weight: 900; color: ${isEmergency ? "var(--alert-red)" : "var(--text-main)"};">
+                ${escapeHtml(p.title)}
+              </h3>
+              <p style="margin: 0; font-size: 0.88rem; color: var(--text-sub);">${escapeHtml(p.zh)}</p>
+              <div class="phrase-jp-preview">
+                <p class="phrase-jp-big" lang="ja">${escapeHtml(p.jp)}</p>
+                <p class="phrase-kana">${escapeHtml(p.reading)}</p>
+              </div>
+              <button type="button" class="btn ${isEmergency ? "btn-red" : "btn-driver"} btn-full" data-phrase="${p.id}">
+                🔍 滿版放大給司機／站務看
+              </button>
+            </article>
+          `;
+        })
+        .join("");
+    }
+
+    /* 互動打包清單：初始化渲染一次，勾選時僅局部更新該列與進度條（不閃爍不失焦） */
+    function renderPackingList() {
+      const html = PACKING_GROUPS.map((grp) => {
+        const rowsHtml = grp.items
+          .map((item) => {
+            const isChecked = !!state.packing[item.id];
+            return `
+              <label class="check-row ${isChecked ? "checked" : ""}" for="chk-${item.id}">
+                <input
+                  type="checkbox"
+                  id="chk-${item.id}"
+                  class="check-input"
+                  data-pack-id="${item.id}"
+                  ${isChecked ? "checked" : ""}
+                />
+                <span class="check-text">${escapeHtml(item.text)}</span>
+              </label>
+            `;
+          })
+          .join("");
+
+        const noteHtml = grp.note
+          ? `<div class="tip-box" style="margin-top: 8px; padding: 10px 12px;"><p style="font-size: 0.86rem;">${escapeHtml(grp.note)}</p></div>`
+          : "";
+
+        return `
+          <article class="card" data-pack-group="${grp.id}">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;">
+              <h3 style="margin: 0; font-size: 1.02rem; font-weight: 900; color: var(--text-main);">${escapeHtml(grp.title)}</h3>
+              <span class="badge ${grp.badgeCls}" data-group-counter="${grp.id}">${escapeHtml(grp.badge)}</span>
+            </div>
+            <div>${rowsHtml}</div>
+            ${noteHtml}
+          </article>
+        `;
+      }).join("");
+
+      document.getElementById("packing-groups-container").innerHTML = html;
+      updatePackingProgressUI();
+    }
+
+    function updatePackingProgressUI() {
+      let total = 0;
+      let done = 0;
+
+      PACKING_GROUPS.forEach((grp) => {
+        let gDone = 0;
+        grp.items.forEach((item) => {
+          total++;
+          if (state.packing[item.id]) {
+            done++;
+            gDone++;
+          }
+        });
+        const counterEl = document.querySelector(`[data-group-counter="${grp.id}"]`);
+        if (counterEl) {
+          counterEl.textContent = `${grp.badge} ${gDone}/${grp.items.length}`;
+        }
+      });
+
+      const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+      document.getElementById("pack-badge").textContent = `${done} / ${total} (${pct}%)`;
+      document.getElementById("pack-progress-fill").style.width = pct + "%";
+      document.getElementById("pack-progress-bar").setAttribute("aria-valuenow", String(pct));
+      document.getElementById("pack-status-msg").textContent =
+        pct === 100 ? "太棒了！全部打包完成，準備開心賞雪泡湯 🎉" : `已完成 ${pct}%（勾選紀錄自動儲存）`;
+    }
+
+    /* ==========================================================================
+       十五、全螢幕高對比溝通字卡彈窗（Modal：含導航地址、語音朗讀與一鍵複製）
+       ========================================================================== */
+    function applyModalTheme() {
+      const modal = document.getElementById("phrase-modal");
+      const btn = document.getElementById("modal-theme-btn");
+      if (state.modalDark) {
+        modal.classList.remove("theme-light");
+        modal.classList.add("theme-dark");
+        btn.textContent = "☀️ 白底黑字";
+      } else {
+        modal.classList.remove("theme-dark");
+        modal.classList.add("theme-light");
+        btn.textContent = "🌙 黑底白字";
+      }
+    }
+
+    function openModal({ badgeText, jpText, addressJp, readingText, zhText, triggerEl }) {
+      state.lastTriggerEl = triggerEl || document.activeElement;
+      state.currentModalSpeakText = jpText;
+      state.currentModalCopyText = addressJp ? `${jpText}\n${addressJp}` : jpText;
+
+      document.getElementById("modal-badge").textContent = badgeText;
+
+      const jpEl = document.getElementById("modal-jp");
+      jpEl.textContent = jpText;
+      jpEl.classList.toggle("is-long", jpText.length > 32);
+
+      const addrEl = document.getElementById("modal-address");
+      if (addressJp) {
+        addrEl.textContent = "📍 " + addressJp;
+        addrEl.classList.remove("hidden");
+      } else {
+        addrEl.textContent = "";
+        addrEl.classList.add("hidden");
+      }
+
+      document.getElementById("modal-reading").textContent = readingText || "";
+      document.getElementById("modal-zh").textContent = zhText || "";
+
+      // 若瀏覽器不支援語音合成則自動隱藏朗讀按鈕
+      const speakBtn = document.getElementById("modal-speak-btn");
+      speakBtn.classList.toggle("hidden", !("speechSynthesis" in window));
+
+      applyModalTheme();
+      const modal = document.getElementById("phrase-modal");
+      modal.classList.remove("hidden");
+      modal.querySelector(".modal-center").scrollTop = 0;
+      document.body.style.overflow = "hidden";
+      document.getElementById("modal-close-btn").focus();
+    }
+
+    function openPlaceModal(placeId, triggerEl) {
+      const p = PLACES_DB[placeId];
+      if (!p) return;
+      openModal({
+        badgeText: "🚕 給司機／站務看",
+        jpText: `大人4名です。「${p.jp}」までお願いします。`,
+        addressJp: p.addressJp || "",
+        readingText: p.kana ? `（${p.kana}）` : "",
+        zhText: `您好，我們有 4 位大人，請載我們到「${p.zh}」。`,
+        triggerEl
+      });
+    }
+
+    function openPhraseById(phraseId, triggerEl) {
+      const item = PHRASES_BY_ID[phraseId];
+      if (!item) return;
+      openModal({
+        badgeText: item.cat + "・溝通字卡",
+        jpText: item.jp,
+        addressJp: "",
+        readingText: item.reading,
+        zhText: item.zh,
+        triggerEl
+      });
+    }
+
+    function openPnrModal(legKey, triggerEl) {
+      const leg = FLIGHT_BOOKING.legs[legKey];
+      const addrLine = leg
+        ? `${leg.flightNo} ｜ ${leg.date}\n${leg.depTime} ${leg.depCode}（${leg.depAirport}）➔ ${leg.arrTime} ${leg.arrCode}（${leg.arrAirport}）`
+        : `去程 2/15 JX314 09:15 RMQ T2 ➔ 13:25 NRT T2\n回程 2/25 JX315 14:25 NRT T2 ➔ 17:55 RMQ T2`;
+      openModal({
+        badgeText: "✈️ 星宇航空 班機資訊（給地勤看）",
+        jpText: leg ? `STARLUX ${leg.flightNo}` : "STARLUX JX314 / JX315",
+        addressJp: addrLine,
+        readingText: `${FLIGHT_BOOKING.airlineEn}・${FLIGHT_BOOKING.cabin}・${FLIGHT_BOOKING.status}`,
+        zhText: "請搭配 4 本護照與電子機票辦理報到與行李託運（公開版已隱藏個人訂位代號）。",
+        triggerEl
+      });
+      state.currentModalCopyText = leg ? `STARLUX ${leg.flightNo}` : "STARLUX JX314 / JX315";
+      state.currentModalSpeakText = leg ? `スターラックスこうくう、${leg.flightNo} びんの チェックインを おねがいします。` : "スターラックスこうくうの チェックインを おねがいします。";
+    }
+
+    function closeModal() {
+      const modal = document.getElementById("phrase-modal");
+      if (modal.classList.contains("hidden")) return;
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+      modal.classList.add("hidden");
+      document.body.style.overflow = "";
+      if (state.lastTriggerEl && typeof state.lastTriggerEl.focus === "function") {
+        state.lastTriggerEl.focus();
+      }
+    }
+
+    function speakModalJapanese() {
+      if (!("speechSynthesis" in window) || !state.currentModalSpeakText) return;
+      try {
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(state.currentModalSpeakText);
+        utter.lang = "ja-JP";
+        utter.rate = 0.9; // 放慢語速讓現場溝通更清晰
+        window.speechSynthesis.speak(utter);
+        showToast("🔊 正在朗讀日文...");
+      } catch (err) {
+        showToast("此裝置無法播放日文語音");
+      }
+    }
+
+    function copyModalJapanese() {
+      const text = state.currentModalCopyText;
+      if (!text) return;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(
+          () => showToast("✅ 已複製日文內容"),
+          () => fallbackCopyText(text)
+        );
+      } else {
+        fallbackCopyText(text);
+      }
+    }
+
+    function fallbackCopyText(text) {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand("copy");
+        showToast("✅ 已複製日文內容");
+      } catch (err) {
+        showToast("無法自動複製，請直接給對方看畫面");
+      }
+      document.body.removeChild(ta);
+    }
+
+    /* ==========================================================================
+       十六、統一事件委派與初始化
+       ========================================================================== */
+    function bindEvents() {
+      // 全域點擊委派（取代散落 HTML 的 inline onclick）
+      document.addEventListener("click", (e) => {
+        const fontBtn = e.target.closest(".font-btn");
+        if (fontBtn) {
+          setFontSize(fontBtn.dataset.font);
+          return;
+        }
+
+        const navBtn = e.target.closest(".nav-item");
+        if (navBtn) {
+          switchTab(navBtn.dataset.tab);
+          return;
+        }
+
+        const subTabBtn = e.target.closest(".subtab-btn");
+        if (subTabBtn) {
+          switchSubTab(subTabBtn.dataset.subtab);
+          return;
+        }
+
+        const dayBtn = e.target.closest("[data-day]");
+        if (dayBtn) {
+          selectDay(Number(dayBtn.dataset.day));
+          return;
+        }
+
+        const stepBtn = e.target.closest("[data-step]");
+        if (stepBtn && !stepBtn.disabled) {
+          selectDay(state.activeDay + Number(stepBtn.dataset.step));
+          return;
+        }
+
+        const jumpStageBtn = e.target.closest("[data-jump-stage]");
+        if (jumpStageBtn) {
+          jumpToTransitStage(jumpStageBtn.dataset.jumpStage);
+          return;
+        }
+
+        const toggleStageBtn = e.target.closest("[data-toggle-stage]");
+        if (toggleStageBtn) {
+          toggleTransitStage(toggleStageBtn.dataset.toggleStage);
+          return;
+        }
+
+        const mapCatBtn = e.target.closest("[data-map-cat]");
+        if (mapCatBtn) {
+          state.activeMapCat = mapCatBtn.dataset.mapCat;
+          renderMapFilters();
+          renderMapPlaces();
+          return;
+        }
+
+        const phraseCatBtn = e.target.closest("[data-phrase-cat]");
+        if (phraseCatBtn) {
+          state.activePhraseCat = phraseCatBtn.dataset.phraseCat;
+          renderPhraseFilters();
+          renderPhrases();
+          return;
+        }
+
+        const placeBtn = e.target.closest("[data-place]");
+        if (placeBtn) {
+          openPlaceModal(placeBtn.dataset.place, placeBtn);
+          return;
+        }
+
+        const phraseBtn = e.target.closest("[data-phrase]");
+        if (phraseBtn) {
+          openPhraseById(phraseBtn.dataset.phrase, phraseBtn);
+          return;
+        }
+
+        const pnrModalBtn = e.target.closest("[data-pnr-modal]");
+        if (pnrModalBtn) {
+          openPnrModal(pnrModalBtn.dataset.pnrModal, pnrModalBtn);
+          return;
+        }
+
+        const copyPnrBtn = e.target.closest("[data-copy-pnr]");
+        if (copyPnrBtn) {
+          state.currentModalCopyText = leg ? `STARLUX ${leg.flightNo}` : "STARLUX JX314 / JX315";
+          copyModalJapanese();
+          showToast("✅ 已複製訂位代號：" + FLIGHT_BOOKING.pnr);
+          return;
+        }
+
+        const playYtBtn = e.target.closest("[data-play-yt]");
+        if (playYtBtn) {
+          const ytId = playYtBtn.dataset.playYt;
+          const card = playYtBtn.closest(".video-card");
+          const wrap = card && card.querySelector(".video-frame-wrap");
+          if (wrap && !wrap.querySelector("iframe")) {
+            const iframe = document.createElement("iframe");
+            iframe.className = "video-iframe";
+            iframe.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(ytId)}?autoplay=1&rel=0&playsinline=1`;
+            iframe.title = "YouTube 實景教學影片";
+            iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+            iframe.referrerPolicy = "strict-origin-when-cross-origin";
+            iframe.allowFullscreen = true;
+            wrap.innerHTML = "";
+            wrap.appendChild(iframe);
+          }
+          return;
+        }
+
+        if (e.target.closest("#btn-clear-map-empty")) {
+          state.mapQuery = "";
+          state.activeMapCat = "all";
+          document.getElementById("map-search-input").value = "";
+          document.getElementById("map-search-clear").classList.add("hidden");
+          renderMapFilters();
+          renderMapPlaces();
+        }
+      });
+
+      // 打包清單勾選事件委派（局部更新 DOM，零閃爍）
+      document.getElementById("packing-groups-container").addEventListener("change", (e) => {
+        const input = e.target.closest(".check-input");
+        if (!input) return;
+        const id = input.dataset.packId;
+        state.packing[id] = input.checked;
+        input.closest(".check-row").classList.toggle("checked", input.checked);
+        saveStorage();
+        updatePackingProgressUI();
+      });
+
+      // 重置確認列
+      document.getElementById("btn-show-reset").addEventListener("click", () => {
+        document.getElementById("reset-confirm-bar").classList.remove("hidden");
+      });
+      document.getElementById("btn-cancel-reset").addEventListener("click", () => {
+        document.getElementById("reset-confirm-bar").classList.add("hidden");
+      });
+      document.getElementById("btn-confirm-reset").addEventListener("click", () => {
+        state.packing = {};
+        saveStorage();
+        document.getElementById("reset-confirm-bar").classList.add("hidden");
+        renderPackingList();
+        showToast("已重置所有打包勾選紀錄");
+      });
+
+      // 地圖即時搜尋
+      const searchInput = document.getElementById("map-search-input");
+      const searchClear = document.getElementById("map-search-clear");
+      searchInput.addEventListener("input", () => {
+        state.mapQuery = searchInput.value;
+        searchClear.classList.toggle("hidden", !state.mapQuery);
+        renderMapPlaces();
+      });
+      searchClear.addEventListener("click", () => {
+        state.mapQuery = "";
+        searchInput.value = "";
+        searchClear.classList.add("hidden");
+        renderMapPlaces();
+        searchInput.focus();
+      });
+
+      // Modal 按鈕事件
+      document.getElementById("modal-theme-btn").addEventListener("click", () => {
+        state.modalDark = !state.modalDark;
+        saveStorage();
+        applyModalTheme();
+      });
+      document.getElementById("modal-speak-btn").addEventListener("click", speakModalJapanese);
+      document.getElementById("modal-copy-btn").addEventListener("click", copyModalJapanese);
+      document.getElementById("modal-close-btn").addEventListener("click", closeModal);
+
+      // ESC 鍵關閉彈窗
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          closeModal();
+        }
+      });
+
+      // 浮動回頂按鈕
+      const topBtn = document.getElementById("back-to-top");
+      topBtn.addEventListener("click", () => {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+      window.addEventListener(
+        "scroll",
+        () => {
+          topBtn.classList.toggle("visible", window.scrollY > 420);
+        },
+        { passive: true }
+      );
+
+      // 動態監測 Header 高度（解決小螢幕工具列換行遮住日期列的問題）
+      if ("ResizeObserver" in window) {
+        const ro = new ResizeObserver(syncHeaderHeight);
+        ro.observe(document.getElementById("sticky-header"));
+      }
+      window.addEventListener("resize", syncHeaderHeight, { passive: true });
+    }
+
+    function initApp() {
+      loadStorage();
+      bindEvents();
+      setFontSize(state.fontSize);
+      detectTodayBanner();
+      renderDayPills();
+      renderActiveDayContent();
+      renderTransitQuickPills();
+      renderTransitStages();
+      renderMapFilters();
+      renderMapPlaces();
+      renderFlightPassCard();
+      renderHotelsTab();
+      renderPhraseFilters();
+      renderPhrases();
+      renderPackingList();
+      switchSubTab(state.activeSubTab);
+      switchTab(state.activeTab, true);
+      syncHeaderHeight();
+
+      // 初始捲動至上次閱讀的日期膠囊
+      const pillContainer = document.getElementById("day-pills");
+      const activePill = pillContainer.querySelector(".pill-btn.active");
+      centerPillHorizontally(pillContainer, activePill);
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", initApp);
+    } else {
+      initApp();
+    }
+  </script>
+</body>
+</html>
